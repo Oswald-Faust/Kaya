@@ -3,7 +3,7 @@ import { KayaWordmark } from "@/components/brand/logo";
 import { NAV, resolveHref } from "./nav-data";
 import { WordRise } from "./motion";
 
-export function SiteFooter({ demoHref = "/start" }: { demoHref?: string }) {
+export function SiteFooter({ demoHref = "/demo" }: { demoHref?: string }) {
   return (
     <footer className="bg-cream">
       <div className="mx-auto max-w-[1360px] px-5 pt-16 pb-10 sm:px-8">

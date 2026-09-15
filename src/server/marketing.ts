@@ -8,7 +8,7 @@ export interface MarketingLinks {
   demoSlug: string | null;
 }
 
-const FALLBACK: MarketingLinks = { appHref: null, demoHref: "/start", demoSlug: null };
+const FALLBACK: MarketingLinks = { appHref: null, demoHref: "/demo", demoSlug: null };
 
 /**
  * Links for public marketing pages. These pages must render without a database
@@ -18,12 +18,12 @@ export async function getMarketingLinks(): Promise<MarketingLinks> {
   try {
     const lookup = (async () => {
       const user = await currentUser();
-      if (!user) return FALLBACK;
+      if (!user || user.isGuest) return FALLBACK;
       const workspaces = await listWorkspacesForUser(user.userId);
       const demo = workspaces.find((w) => w.isDemo);
       return {
         appHref: workspaces.length ? `/w/${workspaces[workspaces.length - 1].slug}` : null,
-        demoHref: demo ? `/w/${demo.slug}` : "/start",
+        demoHref: demo ? `/w/${demo.slug}` : "/demo",
         demoSlug: demo?.slug ?? null,
       };
     })();

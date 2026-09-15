@@ -7,20 +7,7 @@
  *
  * See docs/data-model.md for rationale and the mapping to the Notion spec.
  */
-import {
-  boolean,
-  date,
-  doublePrecision,
-  index,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { boolean, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type {
   AgentPlan,
   ChannelFactors,
@@ -88,6 +75,13 @@ export const organizations = pgTable("organizations", {
   id: id(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  /** none | free | launch | growth | scale. "none" until the founder picks a plan at the end of onboarding. */
+  plan: text("plan").notNull().default("none"),
+  /** none | trialing | active */
+  planStatus: text("plan_status").notNull().default("none"),
+  planInterval: text("plan_interval"),
+  planActions: integer("plan_actions"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
@@ -95,8 +89,29 @@ export const users = pgTable("users", {
   id: id(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
+  /** scrypt hash; null for Google-only and guest accounts. */
+  passwordHash: text("password_hash"),
+  googleSub: text("google_sub").unique(),
+  avatarUrl: text("avatar_url"),
+  /** Anonymous visitor who started an analysis before creating an account. */
+  isGuest: boolean("is_guest").notNull().default(false),
   createdAt: createdAt(),
 });
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** SHA-256 of the cookie token; the token itself is never stored. */
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
 
 export const members = pgTable(
   "members",

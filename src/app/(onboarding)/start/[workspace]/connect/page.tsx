@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ConnectBoard } from "@/components/onboarding/connect-board";
 import { OnboardingSteps } from "@/components/onboarding/steps";
-import { requireWorkspace } from "@/server/context";
+import { requireOnboardingAccount } from "@/server/context";
 import { db } from "@/server/db/client";
 import { integrations } from "@/server/db/schema";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
@@ -11,7 +11,7 @@ export const metadata = { title: "Connect your data" };
 
 export default async function ConnectPage({ params }: PageProps<"/start/[workspace]/connect">) {
   const { workspace } = await params;
-  const ctx = await requireWorkspace(workspace);
+  const ctx = await requireOnboardingAccount(workspace, "connect");
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) redirect("/start");
   const [goal, rows] = await Promise.all([getActiveGoal(ctx.workspaceId, product.id), db.select().from(integrations).where(eq(integrations.workspaceId, ctx.workspaceId))]);

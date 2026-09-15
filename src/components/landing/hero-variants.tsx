@@ -59,10 +59,10 @@ export function HeroClay3D({ demoHref }: { demoHref: string }) {
   const visible = useInView(stage, { amount: 0.05 });
 
   return (
-    <section className="px-3 sm:px-5">
-      <div ref={stage} className="relative mx-auto grid max-w-[1360px] overflow-hidden rounded-[32px] bg-cream lg:min-h-[min(820px,86vh)] lg:grid-cols-[1.05fr_1fr]">
-        <div aria-hidden className="bg-dots absolute inset-0 [mask-image:radial-gradient(ellipse_at_75%_50%,black,transparent_65%)]" />
-        <div className="relative z-10 flex flex-col justify-center px-6 pt-12 pb-6 sm:px-12 lg:py-20">
+    <section className="relative">
+      <div ref={stage} className="relative isolate overflow-hidden bg-cream lg:min-h-[min(880px,92vh)]">
+        <div aria-hidden className="bg-dots absolute inset-0 [mask-image:radial-gradient(ellipse_at_72%_50%,black,transparent_60%)]" />
+        <div className="relative z-10 mx-auto flex max-w-[1360px] flex-col justify-center px-6 pt-12 pb-6 sm:px-12 lg:min-h-[min(880px,92vh)] lg:py-20 lg:[&>*]:max-w-[600px]">
           <motion.div {...intro(0)}>
             <Pill>The AI marketing agent for founders</Pill>
           </motion.div>
@@ -94,7 +94,7 @@ export function HeroClay3D({ demoHref }: { demoHref: string }) {
             </span>
           </motion.div>
         </div>
-        <div className="relative h-[380px] sm:h-[480px] lg:h-auto">
+        <div className="relative h-[380px] sm:h-[480px] lg:absolute lg:inset-0 lg:h-auto">
           <Hero3DScene eventSource={stage} active={visible} />
         </div>
       </div>

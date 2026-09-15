@@ -29,7 +29,7 @@ function SmartLink({ href, className, onClick, children }: { href: string; class
   );
 }
 
-export function SiteNav({ appHref = null, demoHref = "/start" }: { appHref?: string | null; demoHref?: string }) {
+export function SiteNav({ appHref = null, demoHref = "/demo" }: { appHref?: string | null; demoHref?: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const closeTimer = useRef<number | null>(null);
@@ -101,13 +101,13 @@ export function SiteNav({ appHref = null, demoHref = "/start" }: { appHref?: str
           </ul>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Link href={appHref ?? "/start"} className="hidden rounded-lg px-3 py-1.5 text-[15px] transition-colors hover:bg-sunken md:inline-flex">
-              Log in
+            <Link href={appHref ?? "/login"} className="hidden rounded-lg px-3 py-1.5 text-[15px] transition-colors hover:bg-sunken md:inline-flex">
+              {appHref ? "Open workspace" : "Log in"}
             </Link>
             <Link href={demoHref} className="hidden h-9 items-center rounded-xl bg-sunken px-3.5 text-sm font-medium transition-colors hover:bg-stone sm:inline-flex">
               Get a demo
             </Link>
-            <Link href="/start" className="inline-flex h-9 items-center rounded-xl bg-ink px-3.5 text-sm font-medium text-white transition-colors hover:bg-ink-hover">
+            <Link href="/signup" className="inline-flex h-9 items-center rounded-xl bg-ink px-3.5 text-sm font-medium text-white transition-colors hover:bg-ink-hover">
               Start free
             </Link>
             <button
@@ -177,7 +177,7 @@ export function SiteNav({ appHref = null, demoHref = "/start" }: { appHref?: str
               <Link href={demoHref} onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-sunken font-medium">
                 Get a demo
               </Link>
-              <Link href="/start" onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-ink font-medium text-white">
+              <Link href="/signup" onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-ink font-medium text-white">
                 Start free
               </Link>
             </div>

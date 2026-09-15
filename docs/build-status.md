@@ -17,6 +17,13 @@ Verification: `pnpm typecheck` clean · `pnpm eslint src` clean · `pnpm test` 8
 - Checked at 1280×800 and 390×844 with no horizontal overflow; `next build` succeeds.
 - Design system: tokens, AppShell, Sidebar, TopBar (goal progress, Growth Loop rail, autonomy state), ⌘K command palette, Panel, Metric/MetricGroup, Status/Confidence/Channel/Risk/Demo badges, AreaChart with experiment markers, Sparkline, EmptyState/Skeleton/Notice.
 
+**Accounts & conversion**
+- `/login` and `/signup` (split screen with the clay world), email + password with scrypt, Google OAuth when `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set, server-side sessions, logout, per-instance attempt limiting.
+- Guest sessions for anonymous analysis; account wall before Confirm upgrades the guest and keeps the workspace; logging in adopts the guest's workspaces.
+- Strategy teaser (positioning, top channel, first experiment) with the rest withheld server-side; **Launch** step with Launch/Growth 14-day trial (no card) or Free; dashboard gated by plan, trial days chip, Free keeps the teaser and Suggest mode.
+- `/demo` opens the demo workspace as a read-only viewer.
+- Onboarding type scale enlarged; redesigned "Build your first strategy" screen with progress and illustrations.
+
 **Product Intelligence**
 - URL-first onboarding (`/start`), manual description fallback.
 - Safe crawler: SSRF checks on every redirect hop, robots.txt, sitemap index, 8-page / 1.5 MB / timeout caps.
@@ -73,7 +80,8 @@ Verification: `pnpm typecheck` clean · `pnpm eslint src` clean · `pnpm test` 8
 
 - **Live Stripe, GA4/PostHog, Search Console, Google Ads, Meta Ads, Resend adapters**: need OAuth apps or API credentials (and Google Ads developer token, Meta app review). Demo adapters implement the same contracts.
 - **Claude refinement in this environment**: `ANTHROPIC_API_KEY` is not set, so the live analysis ran the heuristic pass only. Code path is typechecked but not exercised against the API.
-- **Auth provider**: founder decision (spec §40).
+- **Payments**: trials start without a card; Stripe Checkout and billing webhooks need `STRIPE_SECRET_KEY` and price IDs.
+- **Email**: verification, password reset and magic links need an email provider key (Resend).
 - **Dogfooding on a real SaaS**: needs the credentials above.
 
 ## Next

@@ -36,7 +36,7 @@ beforeAll(async () => {
     workspaceName: ws!.name,
     role: "owner",
     autonomyMode: ws!.autonomyMode,
-    isDemo: true,
+    isDemo: true, isGuest: false,
     productId: product!.id,
   };
   const campaign = await db.query.campaigns.findFirst({ where: and(eq(t.campaigns.workspaceId, ws!.id), eq(t.campaigns.name, "Cron monitoring · exact match")) });

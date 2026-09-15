@@ -8,18 +8,19 @@ const STEPS = [
   { id: "goal", label: "Goal" },
   { id: "connect", label: "Connect" },
   { id: "strategy", label: "Strategy" },
+  { id: "plan", label: "Launch" },
 ] as const;
 
 export type OnboardingStepId = (typeof STEPS)[number]["id"];
 
-const ORDER: Record<string, number> = { analyze: 0, confirm: 1, goal: 2, connect: 3, strategy: 4, done: 5 };
+const ORDER: Record<string, number> = { analyze: 0, confirm: 1, goal: 2, connect: 3, strategy: 4, plan: 5, done: 6 };
 
 /** Step rail. Steps the founder already reached stay navigable. */
 export function OnboardingSteps({ slug, current, reached }: { slug: string; current: OnboardingStepId; reached: string }) {
   const reachedIndex = ORDER[reached] ?? 0;
   return (
     <nav aria-label="Setup progress">
-      <ol className="flex items-center gap-1 overflow-x-auto text-xs">
+      <ol className="flex items-center gap-1.5 overflow-x-auto text-sm">
         {STEPS.map((s, i) => {
           const done = i < ORDER[current];
           const active = s.id === current;
@@ -27,18 +28,18 @@ export function OnboardingSteps({ slug, current, reached }: { slug: string; curr
           const inner = (
             <span
               className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-md px-2 whitespace-nowrap",
+                "inline-flex h-9 items-center gap-2 rounded-xl px-3 whitespace-nowrap",
                 active ? "bg-surface font-medium text-ink shadow-[0_0_0_1px_var(--color-line)]" : done ? "text-muted" : "text-subtle",
                 navigable && "hover:text-ink",
               )}
             >
               <span
                 className={cn(
-                  "grid size-4 place-items-center rounded-full text-[10px] tabular",
+                  "grid size-5 place-items-center rounded-full text-[11px] tabular",
                   done ? "bg-ink text-white" : active ? "bg-agent text-white" : "border border-line-strong text-subtle",
                 )}
               >
-                {done ? <Check className="size-2.5" strokeWidth={3} /> : i + 1}
+                {done ? <Check className="size-3" strokeWidth={3} /> : i + 1}
               </span>
               {s.label}
             </span>

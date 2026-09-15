@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { RunRecorder } from "@/server/agent/recorder";
 import type { WorkspaceContext } from "@/server/context";
 import { db } from "@/server/db/client";
@@ -186,7 +186,7 @@ export async function runStrategyGeneration(workspaceId: string, runId: string):
           .returning({ id: t.experiments.id });
         if (inserted.length) number++;
       }
-      await tx.update(t.products).set({ status: "active", onboardingStep: "done", updatedAt: new Date() }).where(eq(t.products.id, productId));
+      await tx.update(t.products).set({ status: "active", onboardingStep: sql`case when ${t.products.onboardingStep} = 'done' then 'done' else 'plan' end`, updatedAt: new Date() }).where(eq(t.products.id, productId));
       await recordAudit(tx, { workspaceId, actorType: "agent", actorId: STRATEGIST_ID, action: "strategy.created", targetType: "strategy_version", targetId: versionId, payload: { version: nextVersion, experiments: generated.experiments.length } });
       return nextVersion;
     });

@@ -1,4 +1,7 @@
 import { desc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { AppShell } from "@/components/shell/app-shell";
 import { GrowthLoop } from "@/components/shell/growth-loop";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
@@ -8,6 +11,7 @@ import { listWorkspacesForUser, requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
 import { experiments } from "@/server/db/schema";
 import { getShellData } from "@/server/services/workspace";
+import { getPlanState } from "@/server/services/billing";
 import { experimentKey, formatUsd } from "@/lib/format";
 
 const AUTONOMY_LABEL = { observe: "Observe", suggest: "Suggest", copilot: "Copilot", autopilot: "Autopilot" } as const;
@@ -15,6 +19,9 @@ const AUTONOMY_LABEL = { observe: "Observe", suggest: "Suggest", copilot: "Copil
 export default async function WorkspaceLayout({ children, params }: LayoutProps<"/w/[workspace]">) {
   const { workspace } = await params;
   const ctx = await requireWorkspace(workspace);
+  if (ctx.isGuest && !ctx.isDemo) redirect(`/signup?next=${encodeURIComponent(`/w/${workspace}`)}`);
+  const plan = ctx.isDemo ? null : await getPlanState(ctx.organizationId);
+  if (plan?.needsChoice) redirect(`/start/${ctx.workspaceSlug}/plan${plan.status === "expired" ? "?expired=1" : ""}`);
   const [shell, workspaces, exps] = await Promise.all([
     getShellData(ctx),
     listWorkspacesForUser(ctx.userId),
@@ -41,10 +48,26 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {ctx.isDemo && <Badge tone="outline" className="hidden border-dashed sm:inline-flex">Demo data</Badge>}
+        {plan && plan.status === "trialing" && (
+          <Link href={`/start/${ctx.workspaceSlug}/plan`} className="hidden h-7 items-center gap-1.5 rounded-md bg-sun-soft px-2 text-xs font-medium text-sun-deep sm:inline-flex">
+            {plan.plan === "growth" ? "Growth" : "Launch"} trial · {plan.trialDaysLeft} day{plan.trialDaysLeft === 1 ? "" : "s"} left
+          </Link>
+        )}
+        {plan && plan.plan === "free" && (
+          <Link href={`/start/${ctx.workspaceSlug}/plan`} className="hidden h-7 items-center rounded-md bg-lime px-2 text-xs font-medium text-ink sm:inline-flex">
+            Free plan · Unlock strategy
+          </Link>
+        )}
         <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line bg-surface px-2 text-xs text-ink" title="Autonomy mode">
           <span className="size-1.5 rounded-full bg-agent" aria-hidden />
           {AUTONOMY_LABEL[ctx.autonomyMode]}
         </span>
+        <form action="/logout" method="post">
+          <button type="submit" title={`Log out ${ctx.email}`} className="grid size-7 place-items-center rounded-md border border-line bg-surface text-muted hover:text-ink">
+            <LogOut className="size-3.5" />
+            <span className="sr-only">Log out</span>
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Float, Lightformer, RoundedBox } from "@react-three/drei";
 import { useRef, useState, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
@@ -70,6 +70,13 @@ function Rig({ children, reduced }: { children: ReactNode; reduced: boolean }) {
   return <group ref={ref}>{children}</group>;
 }
 
+/** On wide screens the scene spans the whole hero; shift the objects into the right half. */
+function Offset({ children }: { children: ReactNode }) {
+  const { size, viewport } = useThree();
+  const wide = size.width >= 1024;
+  return <group position={[wide ? viewport.width * 0.22 : 0, 0, 0]}>{children}</group>;
+}
+
 function Floater({ children, speed, reduced }: { children: ReactNode; speed: number; reduced: boolean }) {
   return (
     <Float speed={reduced ? 0 : speed} rotationIntensity={reduced ? 0 : 0.9} floatIntensity={reduced ? 0 : 1.3}>
@@ -101,6 +108,7 @@ export function Hero3DScene({ eventSource, active = true }: { eventSource?: RefO
         <Lightformer intensity={0.8} color="#ffe8d6" position={[6, 1, 2]} rotation-y={-Math.PI / 2} scale={[8, 3, 1]} />
       </Environment>
 
+      <Offset>
       <Rig reduced={reduced}>
         <group position={[0, -0.4, 0]}>
           <RoundedBox args={[3.3, 0.35, 1.7]} radius={0.17} smoothness={6} castShadow receiveShadow>
@@ -143,6 +151,7 @@ export function Hero3DScene({ eventSource, active = true }: { eventSource?: RefO
       </Rig>
 
       <ContactShadows position={[0, -0.6, 0]} opacity={0.32} scale={12} blur={2.6} far={4} resolution={512} color="#3b3226" />
+      </Offset>
     </Canvas>
   );
 }

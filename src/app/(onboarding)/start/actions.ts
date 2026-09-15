@@ -1,11 +1,11 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
-import { currentUser, requireWorkspace, SESSION_COOKIE } from "@/server/context";
+import { createSession } from "@/server/auth/session";
+import { currentUser, requireWorkspace } from "@/server/context";
 import { isDomainError } from "@/server/domain/errors";
 import { runProductAnalysis } from "@/server/intelligence/analyze";
 import {
@@ -16,7 +16,6 @@ import {
   confirmFacts,
   correctFact,
   createProductForAnalysis,
-  ensureLocalUser,
   rejectFact,
   restartAnalysis,
   reviewCompetitor,
@@ -25,6 +24,8 @@ import {
   setDemoIntegration,
 } from "@/server/services/onboarding";
 import { runStrategyGeneration, startStrategyRun } from "@/server/services/strategy";
+import { createGuestUser } from "@/server/services/account";
+import { chooseFree, startTrial } from "@/server/services/billing";
 
 export type FormState = { error: string | null };
 export type MutationResult = { ok: true } | { ok: false; error: string };
@@ -51,8 +52,12 @@ export async function startAnalysisAction(_prev: FormState, formData: FormData):
   let slug: string;
   try {
     const existing = await currentUser();
-    const userId = await ensureLocalUser(existing?.userId ?? null);
-    if (!existing) (await cookies()).set(SESSION_COOKIE, userId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+    let userId = existing?.userId;
+    if (!userId) {
+      // Value first: anonymous visitors get a guest session; the account is created after the analysis.
+      userId = await createGuestUser();
+      await createSession(userId);
+    }
 
     const created = await createProductForAnalysis(
       userId,
@@ -166,4 +171,24 @@ export async function startStrategyAction(slug: string): Promise<{ ok: true; run
   } catch (error) {
     return { ok: false, error: toError(error) };
   }
+}
+
+export async function startTrialAction(slug: string, plan: string, interval: string, actions: number): Promise<MutationResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await startTrial(ctx, z.enum(["launch", "growth"]).parse(plan), z.enum(["month", "year"]).parse(interval), z.number().int().positive().max(1_000_000).parse(actions));
+  } catch (error) {
+    return { ok: false, error: toError(error) };
+  }
+  redirect(`/w/${slug}`);
+}
+
+export async function chooseFreeAction(slug: string): Promise<MutationResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await chooseFree(ctx);
+  } catch (error) {
+    return { ok: false, error: toError(error) };
+  }
+  redirect(`/w/${slug}`);
 }

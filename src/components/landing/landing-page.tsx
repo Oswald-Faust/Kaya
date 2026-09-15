@@ -27,7 +27,7 @@ const button = {
  */
 export function LandingPage({ hero, links, overlapStack = false }: { hero: ReactNode; links: MarketingLinks; overlapStack?: boolean }) {
   const { appHref, demoHref, demoSlug } = links;
-  const inDemo = (path: string) => (demoSlug ? `/w/${demoSlug}${path}` : "/start");
+  const inDemo = (path: string) => (demoSlug ? `/w/${demoSlug}${path}` : `/demo?to=${encodeURIComponent(path)}`);
 
   return (
     <div className="bg-surface text-ink">

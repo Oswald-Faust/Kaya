@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ReviewBoard } from "@/components/onboarding/review-board";
 import { OnboardingSteps } from "@/components/onboarding/steps";
-import { requireWorkspace } from "@/server/context";
+import { requireOnboardingAccount } from "@/server/context";
 import { db } from "@/server/db/client";
 import * as t from "@/server/db/schema";
 import { getPrimaryProduct } from "@/server/services/workspace";
@@ -11,7 +11,7 @@ export const metadata = { title: "Confirm what we learned" };
 
 export default async function ConfirmPage({ params }: PageProps<"/start/[workspace]/confirm">) {
   const { workspace } = await params;
-  const ctx = await requireWorkspace(workspace);
+  const ctx = await requireOnboardingAccount(workspace, "confirm");
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) redirect("/start");
   if (product.status === "analyzing") redirect(`/start/${ctx.workspaceSlug}/analyze`);

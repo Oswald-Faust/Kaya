@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { HillsStrip } from "@/components/brand/clay";
 import { InView, Reveal } from "./motion";
 
-export function ClosingCta({ demoHref = "/start", title = "Turn your product into revenue today" }: { demoHref?: string; title?: string }) {
+export function ClosingCta({ demoHref = "/demo", title = "Turn your product into revenue today" }: { demoHref?: string; title?: string }) {
   return (
     <section className="relative mt-28 overflow-hidden text-center sm:mt-36">
       <Reveal className="mx-auto max-w-3xl px-5">

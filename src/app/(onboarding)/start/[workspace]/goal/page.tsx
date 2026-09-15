@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { GoalForm } from "@/components/onboarding/goal-form";
 import { OnboardingSteps } from "@/components/onboarding/steps";
-import { requireWorkspace } from "@/server/context";
+import { requireOnboardingAccount } from "@/server/context";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
 
 export const metadata = { title: "Set your growth goal" };
 
 export default async function GoalPage({ params }: PageProps<"/start/[workspace]/goal">) {
   const { workspace } = await params;
-  const ctx = await requireWorkspace(workspace);
+  const ctx = await requireOnboardingAccount(workspace, "goal");
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) redirect("/start");
   const goal = await getActiveGoal(ctx.workspaceId, product.id);

@@ -50,7 +50,7 @@ export async function seedDemoWorkspace(): Promise<{ workspaceSlug: string; metr
 
   await db.transaction(async (tx) => {
     /* ── Tenancy ── */
-    await tx.insert(t.organizations).values({ id: orgId, name: DEMO.orgName, slug: DEMO.orgSlug, createdAt: at("2026-06-01T08:55:00Z") });
+    await tx.insert(t.organizations).values({ plan: "growth", planStatus: "active", planInterval: "year", planActions: 20000, id: orgId, name: DEMO.orgName, slug: DEMO.orgSlug, createdAt: at("2026-06-01T08:55:00Z") });
     await tx.insert(t.users).values({ id: userId, email: DEMO.user.email, name: DEMO.user.name, createdAt: at("2026-06-01T08:55:00Z") });
     await tx.insert(t.members).values({ id: stableId("mem", orgId, userId), organizationId: orgId, userId, role: "owner" });
     await tx.insert(t.workspaces).values({

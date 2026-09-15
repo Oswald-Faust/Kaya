@@ -10,6 +10,8 @@ import { requireWorkspace } from "@/server/context";
 import { listLearnings } from "@/server/services/learnings";
 import { getCurrentStrategy } from "@/server/services/strategy";
 import { getPrimaryProduct } from "@/server/services/workspace";
+import { getPlanState } from "@/server/services/billing";
+import { StrategyTeaser } from "@/components/product/strategy-teaser";
 import { experimentKey, formatDate } from "@/lib/format";
 
 export const metadata = { title: "Strategy" };
@@ -32,6 +34,7 @@ export default async function StrategyPage({ params }: PageProps<"/w/[workspace]
     );
   }
 
+  const fullAccess = ctx.isDemo || (await getPlanState(ctx.organizationId)).fullAccess;
   const learnings = await listLearnings(ctx.workspaceId, product.id);
   const learningById = new Map(learnings.map((l) => [l.id, l]));
 
@@ -50,7 +53,11 @@ export default async function StrategyPage({ params }: PageProps<"/w/[workspace]
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <StrategySections slug={ctx.workspaceSlug} content={strategy.current.content} channels={strategy.channels} experiments={strategy.experiments} />
+        {fullAccess ? (
+          <StrategySections slug={ctx.workspaceSlug} content={strategy.current.content} channels={strategy.channels} experiments={strategy.experiments} />
+        ) : (
+          <StrategyTeaser content={strategy.current.content} channels={strategy.channels} experiments={strategy.experiments} unlockHref={`/start/${ctx.workspaceSlug}/plan`} />
+        )}
 
         <aside className="space-y-5 xl:sticky xl:top-20 xl:self-start">
           <Panel>

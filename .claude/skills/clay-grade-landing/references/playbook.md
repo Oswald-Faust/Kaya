@@ -29,3 +29,9 @@ Header (huge H1 left, small integration marquee right) → billing toggle (month
 - A button with both `onFocus={open}` and `onClick={toggle}` opens then immediately closes on click. Use hover + click only.
 - `react-hooks/immutability` forbids `scene.background = x` in effects; use `<primitive attach="background" object={texture} />`.
 - Marketing pages must not depend on the database: wrap lookups in try/catch + timeout (`marketing-links.ts`).
+
+## Auth & conversion recipes (Kaya)
+- **Auth pages**: split screen. Left: logo top-left, huge two-line heading ("Welcome back. / Log in to your account."), Google button only when configured, divider, 48px inputs with visible labels and a show/hide password toggle, black full-width submit, switch link keeping `next`, legal line at the bottom. Right: the brand illustration full-bleed with one floating product card, and an honest "Works with" logo strip on cream.
+- **Value-first onboarding**: let anonymous visitors run the core "wow" step with a guest session, then put the account wall right before the step that saves or confirms their result. Upgrade the guest in place so nothing is lost.
+- **Paywall that stays honest**: show the best real pieces (positioning, top channel, first experiment); render placeholders for the rest instead of blurring real data (blurred HTML is still readable). Unlock step = dark summary card of what they get with real counts + two trial plans (recommended one ringed) + a quiet "Continue with Free".
+- **Gate in code**: the dashboard layout redirects to the plan step when no plan is chosen or the trial expired; a trial chip in the top bar links back to it.
