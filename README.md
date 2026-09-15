@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kaya
 
-## Getting Started
+**The AI agent that does your marketing.** Build your product. We grow it.
 
-First, run the development server:
+Paste a SaaS URL. Kaya reads the product, lets you confirm what it learned, turns your goal and budget into a strategy and measurable experiments, executes approved actions inside hard guardrails, measures the effect on revenue, and learns from every result.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+UNDERSTAND → DECIDE → EXPERIMENT → EXECUTE → MEASURE → LEARN → REPEAT
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run it locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Requirements: Node 22, pnpm 10, PostgreSQL 15+ running locally.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm install
+```
 
-## Learn More
+```bash
+createdb marketing_os && createdb marketing_os_test
+```
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cp .env.example .env.local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm db:reset
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dev
+```
 
-## Deploy on Vercel
+`pnpm db:reset` rebuilds the local schema and seeds **Tickwarden**, a fictional cron-monitoring SaaS with 104 days of coherent metrics, 13 experiments, learnings and pending approvals. It refuses to run against a non-local database.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/` opens the demo Command Center.
+- `/start` runs URL-first onboarding on any public site.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set `ANTHROPIC_API_KEY` in `.env.local` to refine product analysis with Claude. Without it, analysis uses the deterministic extractor and says so.
+
+## Checks
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test
+```
+
+```bash
+pnpm test:integration
+```
+
+Unit tests cover the deterministic core: metrics, experiment statistics, ranking and memory suppression, channel fit, governance policy, extraction, grounding, and demo data coherence. Integration tests run the growth loop against a real database: approval, execution, idempotency, hard caps, audit immutability, tenant scoping, and a learning that changes the next recommendation.
+
+## Where things live
+
+| Path | What |
+|---|---|
+| `src/app/(onboarding)/start` | URL → analysis → confirm → goal → connect → strategy |
+| `src/app/(app)/w/[workspace]` | Command Center, Agent, Strategy, Experiments, Learnings, Analytics, Memory, Integrations, Settings |
+| `src/server/domain` | Pure business logic: metrics, evaluation, ranking, channel fit, policy, brief |
+| `src/server/intelligence` | Safe crawler, extraction, grounding, business memory mapping |
+| `src/server/agent` | Orchestrator, typed tool registry, executor |
+| `src/server/services` | Tenant-scoped data access |
+| `src/server/integrations` | Capability catalog, adapter contract, demo adapters |
+| `docs/` | Requirements matrix, architecture, data model, design research, decisions, build status |
+
+Start with `docs/build-status.md`.
