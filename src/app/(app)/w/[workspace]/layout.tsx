@@ -9,7 +9,7 @@ import { ProgressBar } from "@/components/ui/goal-progress";
 import { Badge } from "@/components/ui/badge";
 import { listWorkspacesForUser, requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
-import { experiments } from "@/server/db/schema";
+import { experiments, users } from "@/server/db/schema";
 import { getShellData } from "@/server/services/workspace";
 import { getPlanState } from "@/server/services/billing";
 import { experimentKey, formatUsd } from "@/lib/format";
@@ -22,11 +22,13 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
   if (ctx.isGuest && !ctx.isDemo) redirect(`/signup?next=${encodeURIComponent(`/w/${workspace}`)}`);
   const plan = ctx.isDemo ? null : await getPlanState(ctx.organizationId);
   if (plan?.needsChoice) redirect(`/start/${ctx.workspaceSlug}/plan${plan.status === "expired" || plan.status === "canceled" ? "?expired=1" : ""}`);
-  const [shell, workspaces, exps] = await Promise.all([
+  const [shell, workspaces, exps, account] = await Promise.all([
     getShellData(ctx),
     listWorkspacesForUser(ctx.userId),
     db.select({ number: experiments.number, name: experiments.name }).from(experiments).where(eq(experiments.workspaceId, ctx.workspaceId)).orderBy(desc(experiments.number)),
+    db.query.users.findFirst({ where: eq(users.id, ctx.userId), columns: { tourCompletedAt: true } }),
   ]);
+  const tour = { autoStart: !ctx.isGuest && !account?.tourCompletedAt, persist: !ctx.isGuest, firstName: ctx.name.split(" ")[0] ?? "" };
 
   const goal = shell.goal;
   const topBar = (
@@ -101,6 +103,7 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
       topBar={topBar}
       pendingApprovals={shell.counts.pendingApprovals}
       running={shell.counts.running}
+      tour={tour}
       experiments={exps.map((e) => ({ key: experimentKey(e.number), number: e.number, name: e.name }))}
     >
       {children}

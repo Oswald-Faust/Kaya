@@ -202,7 +202,7 @@ export const NAV: NavMenu[] = [
       {
         title: "Kaya",
         items: [
-          { label: "About", href: "/", icon: Info, tone: "blue", soon: true },
+          { label: "About", href: "/about", icon: Info, tone: "blue" },
           { label: "Careers", href: "/", icon: Heart, tone: "pink", soon: true },
           { label: "Security & trust", href: "/#control", icon: ShieldCheck, tone: "lilac" },
           { label: "Partners", href: "/", icon: Handshake, tone: "grass", soon: true },

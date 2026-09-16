@@ -4,10 +4,23 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/server/admin/guard";
+import { startImpersonation, stopImpersonation } from "@/server/auth/session";
 import { isDomainError } from "@/server/domain/errors";
 import * as admin from "@/server/services/admin";
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
+
+export interface CreateUserResult {
+  ok: boolean;
+  error?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
+  };
+  generatedPassword?: string | null;
+}
 
 async function run(fn: (ctx: Awaited<ReturnType<typeof requireAdmin>>) => Promise<string | void>): Promise<AdminResult> {
   const ctx = await requireAdmin();
@@ -42,8 +55,56 @@ export async function deleteUserAction(userId: string) {
   return result;
 }
 
+export async function updateUserAction(
+  userId: string,
+  input: { name?: string; email?: string; isPlatformAdmin?: boolean; suspended?: boolean },
+) {
+  return run(async (ctx) => {
+    await admin.updateUser(ctx, Id.parse(userId), input);
+    return "User updated.";
+  });
+}
+
 export async function purgeGuestsAction() {
   return run(async (ctx) => `${await admin.purgeGuests(ctx, 7)} guest account(s) older than 7 days removed.`);
+}
+
+export async function createUserAction(input: {
+  name: string;
+  email: string;
+  password?: string;
+  plan?: "none" | "free" | "launch" | "growth" | "scale";
+  isPlatformAdmin?: boolean;
+  workspaceName?: string;
+}): Promise<CreateUserResult> {
+  const ctx = await requireAdmin();
+  try {
+    const result = await admin.createUser(ctx, input);
+    revalidatePath("/admin", "layout");
+    return { ok: true, user: result.user, generatedPassword: result.generatedPassword };
+  } catch (error) {
+    if (isDomainError(error)) return { ok: false, error: error.message };
+    console.error(JSON.stringify({ level: "error", msg: "create_user_action_failed", error: String(error) }));
+    return { ok: false, error: error instanceof Error ? error.message : "Failed to create user." };
+  }
+}
+
+export async function impersonateUserAction(userId: string) {
+  const ctx = await requireAdmin();
+  const targetUrl = await admin.getImpersonateTarget(ctx, Id.parse(userId));
+  await startImpersonation(ctx.userId, userId);
+  revalidatePath("/", "layout");
+  redirect(targetUrl);
+}
+
+export async function stopImpersonatingAction() {
+  const targetUserId = await stopImpersonation();
+  revalidatePath("/", "layout");
+  if (targetUserId) {
+    redirect(`/admin/users/${targetUserId}`);
+  } else {
+    redirect("/admin/users");
+  }
 }
 
 export async function joinWorkspaceAction(workspaceId: string) {
@@ -63,6 +124,16 @@ export async function removeMemberAction(memberId: string) {
 
 export async function setAutonomyAction(workspaceId: string, mode: string) {
   return run((ctx) => admin.setAutonomy(ctx, Id.parse(workspaceId), z.enum(["observe", "suggest", "copilot", "autopilot"]).parse(mode)).then(() => `Autonomy set to ${mode}.`));
+}
+
+export async function updateWorkspaceAction(
+  workspaceId: string,
+  input: { name?: string; autonomyMode?: "observe" | "suggest" | "copilot" | "autopilot" },
+) {
+  return run(async (ctx) => {
+    await admin.updateWorkspace(ctx, Id.parse(workspaceId), input);
+    return "Workspace updated.";
+  });
 }
 
 export async function deleteWorkspaceAction(workspaceId: string) {

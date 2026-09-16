@@ -16,12 +16,15 @@ import {
   Plug,
   Search,
   Settings,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 interface NavItem {
   href: string;
+  /** Anchor for the product tour. */
+  tour?: string;
   label: string;
   icon: ReactNode;
   badge?: number;
@@ -34,24 +37,26 @@ export function Sidebar({
   pendingApprovals,
   running,
   onOpenPalette,
+  onStartTour,
 }: {
   slug: string;
   switcher: ReactNode;
   pendingApprovals: number;
   running: number;
   onOpenPalette?: () => void;
+  onStartTour?: () => void;
 }) {
   const base = `/w/${slug}`;
   const primary: NavItem[] = [
-    { href: base, label: "Command Center", icon: <Gauge />, exact: true },
-    { href: `${base}/agent`, label: "Agent", icon: <Bot />, badge: pendingApprovals },
+    { href: base, label: "Command Center", tour: "command-center", icon: <Gauge />, exact: true },
+    { href: `${base}/agent`, label: "Agent", tour: "agent", icon: <Bot />, badge: pendingApprovals },
   ];
   const loop: NavItem[] = [
-    { href: `${base}/strategy`, label: "Strategy", icon: <Compass /> },
-    { href: `${base}/experiments`, label: "Experiments", icon: <FlaskConical />, badge: running },
-    { href: `${base}/learnings`, label: "Learnings", icon: <BookOpen /> },
-    { href: `${base}/analytics`, label: "Analytics", icon: <Activity /> },
-    { href: `${base}/memory`, label: "Business memory", icon: <Brain /> },
+    { href: `${base}/strategy`, label: "Strategy", tour: "strategy", icon: <Compass /> },
+    { href: `${base}/experiments`, label: "Experiments", tour: "experiments", icon: <FlaskConical />, badge: running },
+    { href: `${base}/learnings`, label: "Learnings", tour: "learnings", icon: <BookOpen /> },
+    { href: `${base}/analytics`, label: "Analytics", tour: "analytics", icon: <Activity /> },
+    { href: `${base}/memory`, label: "Business memory", tour: "memory", icon: <Brain /> },
   ];
   const execution: NavItem[] = [
     { href: `${base}/campaigns`, label: "Campaigns", icon: <Megaphone /> },
@@ -60,8 +65,8 @@ export function Sidebar({
     { href: `${base}/creators`, label: "Creators", icon: <Users /> },
   ];
   const system: NavItem[] = [
-    { href: `${base}/integrations`, label: "Integrations", icon: <Plug /> },
-    { href: `${base}/settings`, label: "Settings", icon: <Settings /> },
+    { href: `${base}/integrations`, label: "Integrations", tour: "integrations", icon: <Plug /> },
+    { href: `${base}/settings`, label: "Settings", tour: "settings", icon: <Settings /> },
   ];
 
   return (
@@ -70,6 +75,7 @@ export function Sidebar({
       {onOpenPalette && (
         <button
           type="button"
+          data-tour="search"
           onClick={onOpenPalette}
           className="mx-1 flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-xs text-subtle hover:border-line-strong"
         >
@@ -80,18 +86,28 @@ export function Sidebar({
       )}
       <NavGroup items={primary} prominent />
       <NavGroup label="Growth loop" items={loop} />
-      <NavGroup label="Execution" items={execution} />
-      <div className="mt-auto">
+      <NavGroup label="Execution" items={execution} tour="execution" />
+      <div className="mt-auto flex flex-col gap-2">
+        {onStartTour && (
+          <button
+            type="button"
+            onClick={onStartTour}
+            className="mx-1 flex h-7 items-center gap-2 rounded-md px-1.5 text-xs text-subtle hover:bg-sunken hover:text-ink [&_svg]:size-3.5"
+          >
+            <Sparkles />
+            <span>Take the product tour</span>
+          </button>
+        )}
         <NavGroup items={system} />
       </div>
     </nav>
   );
 }
 
-function NavGroup({ label, items, prominent }: { label?: string; items: NavItem[]; prominent?: boolean }) {
+function NavGroup({ label, items, prominent, tour }: { label?: string; items: NavItem[]; prominent?: boolean; tour?: string }) {
   const pathname = usePathname();
   return (
-    <div>
+    <div data-tour={tour}>
       {label && <p className="px-2.5 pb-1 text-2xs font-medium text-subtle">{label}</p>}
       <ul className="flex flex-col gap-px">
         {items.map((item) => {
@@ -100,6 +116,7 @@ function NavGroup({ label, items, prominent }: { label?: string; items: NavItem[
             <li key={item.href}>
               <Link
                 href={item.href}
+                data-tour={item.tour}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group flex items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors [&_svg]:size-4 [&_svg]:shrink-0",

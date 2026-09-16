@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Host_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import "./globals.css";
 
 const host = Host_Grotesk({
@@ -22,7 +24,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${host.variable} ${geistMono.variable} h-full`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ImpersonationBanner />
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

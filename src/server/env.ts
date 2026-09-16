@@ -32,6 +32,9 @@ const EnvSchema = z.object({
   LINKEDIN_CLIENT_ID: z.string().min(1).optional(),
   LINKEDIN_CLIENT_SECRET: z.string().min(1).optional(),
   LINKEDIN_API_VERSION: z.string().regex(/^\d{6}$/).default("202508"),
+  /** Transactional email (team invitations). Without it, invite links are shared by hand. */
+  RESEND_API_KEY: z.string().startsWith("re_").optional(),
+  EMAIL_FROM: z.string().min(3).default("Kaya <team@kaya.app>"),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -56,6 +59,8 @@ const parsed = EnvSchema.safeParse({
   LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID || undefined,
   LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET || undefined,
   LINKEDIN_API_VERSION: process.env.LINKEDIN_API_VERSION || undefined,
+  RESEND_API_KEY: process.env.RESEND_API_KEY || undefined,
+  EMAIL_FROM: process.env.EMAIL_FROM || undefined,
 });
 
 if (!parsed.success) {
@@ -67,3 +72,4 @@ export const env = parsed.data;
 export const llmAvailable = Boolean(env.ANTHROPIC_API_KEY);
 export const googleAuthEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 export const billingEnabled = Boolean(env.STRIPE_SECRET_KEY);
+export const emailEnabled = Boolean(env.RESEND_API_KEY);

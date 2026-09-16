@@ -2,9 +2,11 @@
 
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { completeProductTourAction } from "@/app/(app)/w/[workspace]/actions";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { ProductTour } from "./product-tour";
 import { Sidebar } from "./sidebar";
 
 export interface PaletteExperiment {
@@ -20,6 +22,7 @@ export function AppShell({
   pendingApprovals,
   running,
   experiments,
+  tour,
   children,
 }: {
   slug: string;
@@ -28,10 +31,24 @@ export function AppShell({
   pendingApprovals: number;
   running: number;
   experiments: PaletteExperiment[];
+  /** `autoStart` opens the tour on first login; `persist` saves completion for signed-in users. */
+  tour: { autoStart: boolean; persist: boolean; firstName: string };
   children: ReactNode;
 }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(tour.autoStart);
+
+  const startTour = useCallback(() => {
+    setPaletteOpen(false);
+    setNavOpen(false);
+    setTourOpen(true);
+  }, []);
+
+  const closeTour = useCallback(() => {
+    setTourOpen(false);
+    if (tour.autoStart && tour.persist) void completeProductTourAction();
+  }, [tour.autoStart, tour.persist]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,7 +62,7 @@ export function AppShell({
   }, []);
 
   const sidebar = (
-    <Sidebar slug={slug} switcher={switcher} pendingApprovals={pendingApprovals} running={running} onOpenPalette={() => setPaletteOpen(true)} />
+    <Sidebar slug={slug} switcher={switcher} pendingApprovals={pendingApprovals} running={running} onOpenPalette={() => setPaletteOpen(true)} onStartTour={startTour} />
   );
 
   return (
@@ -62,7 +79,7 @@ export function AppShell({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-canvas/95 px-3 backdrop-blur-sm sm:px-5">
+        <header data-tour="topbar" className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-canvas/95 px-3 backdrop-blur-sm sm:px-5">
           <button type="button" className="grid size-8 place-items-center rounded-md text-muted hover:bg-sunken lg:hidden" aria-label="Open navigation" onClick={() => setNavOpen(true)}>
             <Menu className="size-4" />
           </button>
@@ -71,7 +88,8 @@ export function AppShell({
         <main className="min-w-0 flex-1">{children}</main>
       </div>
 
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} slug={slug} experiments={experiments} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} slug={slug} experiments={experiments} onStartTour={startTour} />
+      <ProductTour open={tourOpen} slug={slug} firstName={tour.firstName} onClose={closeTour} />
     </div>
   );
 }
@@ -81,11 +99,13 @@ function CommandPalette({
   onOpenChange,
   slug,
   experiments,
+  onStartTour,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   slug: string;
   experiments: PaletteExperiment[];
+  onStartTour: () => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -137,6 +157,9 @@ function CommandPalette({
               {label}
             </PaletteItem>
           ))}
+          <PaletteItem value="Take the product tour" onSelect={onStartTour}>
+            Take the product tour
+          </PaletteItem>
         </Command.Group>
         {experiments.length > 0 && (
           <Command.Group heading="Experiments" className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">

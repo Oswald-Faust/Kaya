@@ -1,10 +1,13 @@
 "use server";
 
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { startGoalRun } from "@/server/agent/runtime";
-import { requireWorkspace } from "@/server/context";
+import { currentUser, requireWorkspace } from "@/server/context";
+import { db } from "@/server/db/client";
+import { users } from "@/server/db/schema";
 import { isDomainError } from "@/server/domain/errors";
 import { decideApproval } from "@/server/services/approvals";
 import { evaluateAndComplete, simulateToCompletion } from "@/server/services/experiments";
@@ -70,4 +73,12 @@ export async function recordExperimentResultAction(slug: string, experimentId: s
   } catch (error) {
     return fail(error);
   }
+}
+
+/** Finishing or skipping the product tour both count: it never reopens on its own afterwards. */
+export async function completeProductTourAction(): Promise<ActionResult> {
+  const user = await currentUser();
+  if (!user || user.isGuest) return { ok: false, error: "Sign in to save your progress." };
+  await db.update(users).set({ tourCompletedAt: new Date() }).where(and(eq(users.id, user.userId), isNull(users.tourCompletedAt)));
+  return { ok: true };
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WorkspaceRowActions } from "@/components/admin/workspace-row-actions";
 import { AdminPage, Card, FilterTabs, Pill, PlanPill, SearchForm, Table, Td, When } from "@/components/admin/ui";
 import { requireAdmin } from "@/server/admin/guard";
 import { listWorkspaces } from "@/server/services/admin";
@@ -36,7 +37,7 @@ export default async function AdminWorkspacesPage({ searchParams }: PageProps<"/
       </div>
 
       <Card>
-        <Table head={["Workspace", "Product", "Onboarding", "Plan", "Owner", "Members", "Created"]} empty={rows.length === 0}>
+        <Table head={["Workspace", "Product", "Onboarding", "Plan", "Owner", "Members", "Created", "Actions"]} empty={rows.length === 0}>
           {rows.map((w) => (
             <tr key={w.id} className="hover:bg-raised">
               <Td>
@@ -66,6 +67,9 @@ export default async function AdminWorkspacesPage({ searchParams }: PageProps<"/
               <Td className="tabular">{w.memberCount}</Td>
               <Td className="text-xs">
                 <When date={w.createdAt} />
+              </Td>
+              <Td className="text-right">
+                <WorkspaceRowActions workspace={w} />
               </Td>
             </tr>
           ))}

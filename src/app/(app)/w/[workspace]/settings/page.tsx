@@ -1,131 +1,64 @@
-import { desc, eq } from "drizzle-orm";
-import { Badge, RiskBadge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
-import { Panel, PanelHeader } from "@/components/ui/panel";
-import { formatDate } from "@/lib/format";
-import { describeRegistry } from "@/server/agent/tools";
+import { eq } from "drizzle-orm";
+import { Badge } from "@/components/ui/badge";
+import { CopyField, DeleteWorkspace, WorkspaceNameForm } from "@/components/settings/forms";
+import { Monogram, SettingsHeader, SettingsRow, SettingsSection } from "@/components/settings/primitives";
 import { requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
-import { auditLogs } from "@/server/db/schema";
-import { getGovernance } from "@/server/services/policy-store";
-import { GovernanceForm } from "./governance-form";
+import { organizations } from "@/server/db/schema";
+import { appOrigin } from "@/server/services/billing";
+import { formatDate } from "@/lib/format";
 
-export const metadata = { title: "Settings" };
+export const metadata = { title: "Workspace settings" };
 
-export default async function SettingsPage({ params }: PageProps<"/w/[workspace]/settings">) {
+const ROLE_LABEL = { owner: "Owner", admin: "Admin", member: "Member", viewer: "Viewer" } as const;
+
+export default async function WorkspaceSettingsPage({ params }: PageProps<"/w/[workspace]/settings">) {
   const { workspace } = await params;
   const ctx = await requireWorkspace(workspace);
-  const [{ mode, policy }, audit] = await Promise.all([
-    getGovernance(ctx.workspaceId),
-    db.select().from(auditLogs).where(eq(auditLogs.workspaceId, ctx.workspaceId)).orderBy(desc(auditLogs.createdAt)).limit(40),
-  ]);
-  const tools = describeRegistry();
-  const canManage = ctx.role === "owner" || ctx.role === "admin";
+  const [origin, org] = await Promise.all([appOrigin(), db.query.organizations.findFirst({ where: eq(organizations.id, ctx.organizationId) })]);
+  const canEdit = !ctx.isDemo && (ctx.role === "owner" || ctx.role === "admin");
+  const liveSubscription = Boolean(org?.stripeSubscriptionId) && ["trialing", "active", "past_due"].includes(org?.planStatus ?? "");
+  const blockedReason = ctx.isDemo
+    ? "The demo workspace can't be deleted."
+    : ctx.role !== "owner"
+      ? "Only an owner can delete the workspace."
+      : liveSubscription
+        ? "Cancel the subscription in Plan & billing first."
+        : null;
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
-      <PageHeader title="Settings" description={`${ctx.workspaceName} workspace · you are ${ctx.role}`} />
+    <>
+      <SettingsHeader title="Workspace" description="How this workspace appears to you and your team." />
 
-      <Panel className="p-5">
-        <GovernanceForm
-          slug={ctx.workspaceSlug}
-          disabled={!canManage}
-          values={{
-            autonomyMode: mode,
-            monthlyBudget: policy.monthlyBudget,
-            maxDailySpend: policy.maxDailySpend,
-            maxExperimentBudget: policy.maxExperimentBudget,
-            maxAutoIncreasePct: policy.maxAutoIncreasePct,
-            autoPauseLosers: policy.autoPauseLosers,
-            autoLaunchCampaigns: policy.autoLaunchCampaigns,
-          }}
-        />
-        {policy.neverWithoutApproval.length > 0 && (
-          <p className="mt-4 border-t border-line pt-3 text-xs text-muted">
-            Always require a human, in every mode:{" "}
-            {policy.neverWithoutApproval.map((c) => (
-              <code key={c} className="mr-1.5 rounded-sm bg-sunken px-1 text-[10px]">
-                {c}
-              </code>
-            ))}
-          </p>
-        )}
-      </Panel>
-
-      <Panel className="overflow-hidden">
-        <PanelHeader title="Tool registry" description="Every action the agent can take is a typed tool with a capability, risk class, idempotency and dry-run support." count={tools.length} />
-        <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-2xs text-subtle">
-                <th className="px-4 py-2 font-medium">Tool</th>
-                <th className="px-3 py-2 font-medium">Capability</th>
-                <th className="px-3 py-2 font-medium">Risk</th>
-                <th className="px-3 py-2 font-medium">External</th>
-                <th className="px-3 py-2 font-medium">Dry run</th>
-                <th className="px-4 py-2 font-medium">Who can trigger</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {tools.map((tool) => (
-                <tr key={tool.name} className="align-top">
-                  <td className="px-4 py-2.5">
-                    <code className="text-xs font-medium text-ink">{tool.name}</code>
-                    <p className="mt-0.5 max-w-md text-2xs text-muted">{tool.description}</p>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <code className="text-[11px] text-muted">{tool.capability}</code>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <RiskBadge risk={tool.risk} />
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-muted">{tool.external ? "Yes, audited" : "No"}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted">{tool.supportsDryRun ? "Yes" : "No"}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted">{tool.permissions.join(", ")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <SettingsSection>
+        <div className="flex items-center gap-4 px-4 py-4">
+          <Monogram name={ctx.workspaceName} className="size-14 rounded-lg text-xl" />
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-ink">{ctx.workspaceName}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+              <Badge tone="outline">{ROLE_LABEL[ctx.role]}</Badge>
+              {org && <span>Created {formatDate(org.createdAt, { month: "long", day: "numeric", year: "numeric" })}</span>}
+              {ctx.isDemo && <Badge tone="warning">Demo</Badge>}
+            </p>
+          </div>
         </div>
-      </Panel>
+        <SettingsRow label="Workspace name" description="Shown in the sidebar, invitations and emails.">
+          <WorkspaceNameForm slug={ctx.workspaceSlug} name={ctx.workspaceName} disabled={!canEdit} />
+        </SettingsRow>
+        <SettingsRow label="Workspace URL" description="Share it with teammates who already have access.">
+          <CopyField value={`${origin.replace(/^https?:\/\//, "")}/w/${ctx.workspaceSlug}`} label="Copy workspace URL" />
+        </SettingsRow>
+      </SettingsSection>
 
-      <Panel className="overflow-hidden">
-        <PanelHeader title="Audit log" description="Append-only: the database rejects edits and deletes. External mutations are flagged." />
-        <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-2xs text-subtle">
-                <th className="px-4 py-2 font-medium">When</th>
-                <th className="px-3 py-2 font-medium">Actor</th>
-                <th className="px-3 py-2 font-medium">Action</th>
-                <th className="px-4 py-2 font-medium">Target</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {audit.map((a) => (
-                <tr key={a.id}>
-                  <td className="px-4 py-2 text-xs text-muted tabular whitespace-nowrap">{formatDate(a.createdAt, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                  <td className="px-3 py-2 text-xs">
-                    <Badge tone={a.actorType === "agent" ? "agent" : "neutral"}>{a.actorType}</Badge>
-                  </td>
-                  <td className="px-3 py-2">
-                    <code className="text-xs text-ink">{a.action}</code>
-                    {a.isExternalMutation && (
-                      <Badge tone="warning" className="ml-2">
-                        External{(a.payload as { demo?: boolean }).demo ? " · demo" : ""}
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-muted">
-                    {a.targetType}
-                    {a.targetId ? ` · ${a.targetId.slice(0, 18)}` : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-    </div>
+      <SettingsSection title="Danger zone" className="mt-10">
+        <SettingsRow
+          label="Delete workspace"
+          description="Permanently removes the strategy, experiments, learnings, business memory and connections. This can't be undone."
+          className="[&>div:first-child>div:first-child]:text-negative"
+        >
+          <DeleteWorkspace slug={ctx.workspaceSlug} name={ctx.workspaceName} blockedReason={blockedReason} />
+        </SettingsRow>
+      </SettingsSection>
+    </>
   );
 }

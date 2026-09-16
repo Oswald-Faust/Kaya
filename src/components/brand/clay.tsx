@@ -365,3 +365,106 @@ export function HillsStrip({ className }: SceneProps) {
     </svg>
   );
 }
+
+/** 4-point puffy clay star inspired by Clay's brand motifs. */
+export function ClayStar({
+  tone = "sun",
+  size = 40,
+  className,
+}: {
+  tone?: ClayTone;
+  size?: number;
+  className?: string;
+}) {
+  const id = `star-${tone}`;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      className={className}
+      role="img"
+      aria-hidden="true"
+    >
+      <Defs id={id} />
+      <Shadow id={id} cx={50} cy={88} rx={36} opacity={0.25} />
+      <path
+        d="M 50 12 C 51 32, 68 49, 88 50 C 68 51, 51 68, 50 88 C 49 68, 32 51, 12 50 C 32 49, 49 32, 50 12 Z"
+        fill={radial(id, tone)}
+      />
+      <ellipse
+        cx="44"
+        cy="40"
+        rx="12"
+        ry="7"
+        fill="#ffffff"
+        opacity="0.55"
+        transform="rotate(-25 44 40)"
+      />
+    </svg>
+  );
+}
+
+/** Wavy soft matte clay squiggle / noodle tube. */
+export function ClaySquiggle({
+  tone = "blue",
+  width = 120,
+  height = 48,
+  className,
+}: {
+  tone?: ClayTone;
+  width?: number;
+  height?: number;
+  className?: string;
+}) {
+  const id = `squiggle-${tone}`;
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 160 60"
+      fill="none"
+      className={className}
+      role="img"
+      aria-hidden="true"
+    >
+      <Defs id={id} />
+      <path
+        d="M 12 40 C 35 10, 65 10, 85 40 C 105 70, 135 70, 148 40"
+        stroke={horizontal(id, tone)}
+        strokeWidth="18"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 16 37 C 36 12, 62 12, 82 38"
+        stroke="#ffffff"
+        strokeWidth="4"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </svg>
+  );
+}
+
+/** Clay doodle circle / hand-drawn loop highlight. */
+export function ClayDoodleCircle({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 280 90"
+      fill="none"
+      className={className}
+      role="img"
+      aria-hidden="true"
+    >
+      <path
+        d="M 20 50 C 15 22, 90 10, 175 14 C 240 18, 272 32, 268 55 C 262 76, 205 84, 125 82 C 55 80, 12 68, 28 42 C 40 24, 110 16, 185 20"
+        stroke="#ff7a3d"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+      />
+    </svg>
+  );
+}
+

@@ -43,6 +43,20 @@
       "when": 1789584720301,
       "tag": "0005_sparkling_azazel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789597071884,
+      "tag": "0006_certain_jimmy_woo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789598450364,
+      "tag": "0007_safe_the_hunter",
+      "breakpoints": true
     }
   ]
 }

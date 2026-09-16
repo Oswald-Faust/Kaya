@@ -33,7 +33,7 @@ export function GovernanceForm({ slug, values, disabled }: { slug: string; value
       <input type="hidden" name="autonomyMode" value={mode} />
       <fieldset disabled={disabled}>
         <legend className="text-sm font-semibold text-ink">Autonomy mode</legend>
-        <div className="mt-2 grid gap-2 md:grid-cols-4" role="radiogroup">
+        <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup">
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -56,7 +56,7 @@ export function GovernanceForm({ slug, values, disabled }: { slug: string; value
       <fieldset disabled={disabled}>
         <legend className="text-sm font-semibold text-ink">Budget guardrails</legend>
         <p className="mt-0.5 text-xs text-muted">Enforced in application code before every spend action. An approval cannot override a hard cap.</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Monthly budget" name="monthlyBudget" defaultValue={values.monthlyBudget} prefix="$" hard />
           <Field label="Max daily ad spend" name="maxDailySpend" defaultValue={values.maxDailySpend} prefix="$" hard />
           <Field label="Max budget per experiment" name="maxExperimentBudget" defaultValue={values.maxExperimentBudget} prefix="$" hard />
@@ -76,7 +76,7 @@ export function GovernanceForm({ slug, values, disabled }: { slug: string; value
         )}
         {state.saved && !state.error && (
           <p role="status" className="text-sm text-positive">
-            Saved and recorded in the audit log.
+            Saved.
           </p>
         )}
         <Save disabled={disabled} />

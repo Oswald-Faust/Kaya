@@ -101,6 +101,8 @@ export const users = pgTable("users", {
   isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
   /** Suspended accounts can't sign in and their sessions stop resolving. */
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  /** Set when the user finishes or skips the first-login product tour. */
+  tourCompletedAt: timestamp("tour_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
@@ -133,6 +135,30 @@ export const members = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("members_org_user_idx").on(t.organizationId, t.userId)],
+);
+
+/** Pending seat in an organization. Only the token's SHA-256 is stored; the link is shown once. */
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: id(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Where the invitee lands after accepting. */
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: memberRole("role").notNull().default("member"),
+    tokenHash: text("token_hash").notNull().unique(),
+    invitedBy: text("invited_by").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("invitations_org_email_idx").on(t.organizationId, t.email)],
 );
 
 export const workspaces = pgTable(

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { purgeGuestsAction } from "@/app/admin/actions";
+import { CreateUserButton } from "@/components/admin/create-user-modal";
+import { UserRowActions } from "@/components/admin/user-row-actions";
 import { ActionButton } from "@/components/admin/action-button";
 import { AdminPage, Avatar, Card, FilterTabs, Pill, PlanPill, SearchForm, Table, Td, When } from "@/components/admin/ui";
 import { requireAdmin } from "@/server/admin/guard";
@@ -22,9 +24,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
       title="Users"
       description={`${counts.all} accounts · ${counts.guests} anonymous guests`}
       actions={
-        <ActionButton action={purgeGuestsAction} icon={<Trash2 className="size-3.5" />} confirm="Delete guests older than 7 days that own nothing?">
-          Purge old guests
-        </ActionButton>
+        <>
+          <CreateUserButton />
+          <ActionButton action={purgeGuestsAction} icon={<Trash2 className="size-3.5" />} confirm="Delete guests older than 7 days that own nothing?">
+            Purge old guests
+          </ActionButton>
+        </>
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -44,7 +49,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
       </div>
 
       <Card>
-        <Table head={["User", "Plan", "Sign-in", "Orgs", "Joined", "Last sign-in"]} empty={rows.length === 0}>
+        <Table head={["User", "Plan", "Sign-in", "Orgs", "Joined", "Last sign-in", "Actions"]} empty={rows.length === 0}>
           {rows.map((u) => {
             const [plan, status] = u.bestPlan?.split(":") ?? ["none", "none"];
             return (
@@ -72,6 +77,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                 </Td>
                 <Td className="text-xs">
                   <When date={u.lastSignIn} />
+                </Td>
+                <Td className="text-right">
+                  <UserRowActions user={u} />
                 </Td>
               </tr>
             );
