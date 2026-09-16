@@ -97,6 +97,10 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   /** Anonymous visitor who started an analysis before creating an account. */
   isGuest: boolean("is_guest").notNull().default(false),
+  /** Kaya staff with access to /admin. Granted only by the admin:grant script or another admin. */
+  isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
+  /** Suspended accounts can't sign in and their sessions stop resolving. */
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

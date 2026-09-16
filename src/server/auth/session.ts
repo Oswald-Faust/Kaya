@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { db } from "@/server/db/client";
 import { sessions, users } from "@/server/db/schema";
@@ -34,7 +34,7 @@ export async function getSessionUser(): Promise<UserContext | null> {
     .select({ id: users.id, name: users.name, email: users.email, isGuest: users.isGuest })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date())))
+    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date()), isNull(users.suspendedAt)))
     .limit(1);
   return row ? { userId: row.id, name: row.name, email: row.email, isGuest: row.isGuest } : null;
 }

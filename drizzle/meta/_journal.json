@@ -29,6 +29,13 @@
       "when": 1789581526858,
       "tag": "0003_solid_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789583085316,
+      "tag": "0004_elite_nextwave",
+      "breakpoints": true
     }
   ]
 }

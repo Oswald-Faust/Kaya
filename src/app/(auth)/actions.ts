@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { rotateSession } from "@/server/auth/session";
 import { currentUser } from "@/server/context";
 import { isDomainError } from "@/server/domain/errors";
-import { adoptGuest, checkRateLimit, logInWithPassword, signUpWithPassword } from "@/server/services/account";
+import { adoptGuest, checkRateLimit, isPlatformAdmin, logInWithPassword, signUpWithPassword } from "@/server/services/account";
 
 export type AuthFormState = { error: string | null };
 
@@ -44,13 +44,14 @@ export async function signupAction(_prev: AuthFormState, formData: FormData): Pr
 }
 
 export async function loginAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const next = safeNext(formData.get("next")) ?? "/start";
+  let next = safeNext(formData.get("next"));
   try {
     checkRateLimit(await clientKey("login", formData.get("email")), 8);
     const userId = await logInWithPassword({ email: formData.get("email"), password: formData.get("password") });
     const current = await currentUser();
     if (current?.isGuest) await adoptGuest(current.userId, userId);
     await rotateSession(userId);
+    next ??= (await isPlatformAdmin(userId)) ? "/admin" : "/start";
   } catch (error) {
     return { error: toError(error) };
   }

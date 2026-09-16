@@ -65,6 +65,7 @@ export async function logInWithPassword(input: { email: unknown; password: unkno
   const user = await db.query.users.findFirst({ where: eq(t.users.email, email) });
   const ok = password.success && (await verifyPassword(password.data, user?.passwordHash ?? (await dummyHash())));
   if (!user || user.isGuest || !user.passwordHash || !ok) throw new DomainError("validation", "Email or password is incorrect.");
+  if (user.suspendedAt) throw new DomainError("forbidden", "This account is suspended. Contact support@kaya.app.");
   return user.id;
 }
 
@@ -108,4 +109,9 @@ export async function upsertGoogleUser(profile: GoogleProfile, guestId: string |
   const id = newId("usr");
   await db.insert(t.users).values({ id, email, name: profile.name ?? email.split("@")[0], googleSub: profile.sub, avatarUrl: profile.picture ?? null });
   return { userId: id, adoptedGuest: false };
+}
+
+export async function isPlatformAdmin(userId: string): Promise<boolean> {
+  const row = await db.query.users.findFirst({ where: eq(t.users.id, userId), columns: { isPlatformAdmin: true } });
+  return Boolean(row?.isPlatformAdmin);
 }
