@@ -25,7 +25,8 @@ import {
 } from "@/server/services/onboarding";
 import { runStrategyGeneration, startStrategyRun } from "@/server/services/strategy";
 import { createGuestUser } from "@/server/services/account";
-import { chooseFree, startTrial } from "@/server/services/billing";
+import { chooseFree, createCheckout, startTrial } from "@/server/services/billing";
+import { billingEnabled } from "@/server/env";
 
 export type FormState = { error: string | null };
 export type MutationResult = { ok: true } | { ok: false; error: string };
@@ -174,13 +175,16 @@ export async function startStrategyAction(slug: string): Promise<{ ok: true; run
 }
 
 export async function startTrialAction(slug: string, plan: string, interval: string, actions: number): Promise<MutationResult> {
+  let checkoutUrl: string | null = null;
   try {
     const ctx = await requireWorkspace(slug);
-    await startTrial(ctx, z.enum(["launch", "growth"]).parse(plan), z.enum(["month", "year"]).parse(interval), z.number().int().positive().max(1_000_000).parse(actions));
+    const input = [z.enum(["launch", "growth"]).parse(plan), z.enum(["month", "year"]).parse(interval), z.number().int().positive().max(1_000_000).parse(actions)] as const;
+    if (billingEnabled) checkoutUrl = await createCheckout(ctx, ...input);
+    else await startTrial(ctx, ...input);
   } catch (error) {
     return { ok: false, error: toError(error) };
   }
-  redirect(`/w/${slug}`);
+  redirect(checkoutUrl ?? `/w/${slug}`);
 }
 
 export async function chooseFreeAction(slug: string): Promise<MutationResult> {

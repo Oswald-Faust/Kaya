@@ -77,11 +77,13 @@ export const organizations = pgTable("organizations", {
   slug: text("slug").notNull().unique(),
   /** none | free | launch | growth | scale. "none" until the founder picks a plan at the end of onboarding. */
   plan: text("plan").notNull().default("none"),
-  /** none | trialing | active */
+  /** none | trialing | active | past_due | canceled */
   planStatus: text("plan_status").notNull().default("none"),
   planInterval: text("plan_interval"),
   planActions: integer("plan_actions"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
   createdAt: createdAt(),
 });
 

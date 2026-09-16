@@ -80,7 +80,7 @@ Verification: `pnpm typecheck` clean · `pnpm eslint src` clean · `pnpm test` 8
 
 - **Live Stripe, GA4/PostHog, Search Console, Google Ads, Meta Ads, Resend adapters**: need OAuth apps or API credentials (and Google Ads developer token, Meta app review). Demo adapters implement the same contracts.
 - **Claude refinement in this environment**: `ANTHROPIC_API_KEY` is not set, so the live analysis ran the heuristic pass only. Code path is typechecked but not exercised against the API.
-- **Payments**: trials start without a card; Stripe Checkout and billing webhooks need `STRIPE_SECRET_KEY` and price IDs.
+- **Payments (live mode)**: Stripe subscriptions are wired in test mode (Checkout, 14-day trial, webhook, portal). Going live needs live keys and a live webhook endpoint.
 - **Email**: verification, password reset and magic links need an email provider key (Resend).
 - **Dogfooding on a real SaaS**: needs the credentials above.
 

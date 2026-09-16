@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, Rocket, TrendingUp } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Lock, Rocket, TrendingUp } from "lucide-react";
 import { chooseFreeAction, startTrialAction } from "@/app/(onboarding)/start/actions";
 import { EASE } from "@/components/marketing/motion";
 import { PLANS, priceFor } from "@/components/pricing/plans";
@@ -13,7 +13,7 @@ const OFFER = PLANS.filter((p) => p.id === "launch" || p.id === "growth");
 const ICON = { launch: Rocket, growth: TrendingUp } as const;
 const HEAD = { launch: "bg-grass-deep", growth: "bg-pink-deep" } as const;
 
-export function PlanPicker({ slug, recommended, trialUsed, currentPlan }: { slug: string; recommended: "launch" | "growth"; trialUsed: boolean; currentPlan: string }) {
+export function PlanPicker({ slug, recommended, trialUsed, currentPlan, cardRequired }: { slug: string; recommended: "launch" | "growth"; trialUsed: boolean; currentPlan: string; cardRequired: boolean }) {
   const [annual, setAnnual] = useState(true);
   const [tiers, setTiers] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function PlanPicker({ slug, recommended, trialUsed, currentPlan }: { slug
                       ${price}
                     </motion.span>
                   </AnimatePresence>
-                  <span className="pb-1 text-muted">/mo after trial</span>
+                  <span className="pb-1 text-muted">/mo{trialUsed ? (annual ? ", billed yearly" : "") : " after trial"}</span>
                 </div>
                 <label className="relative mt-4 block">
                   <span className="sr-only">Agent actions</span>
@@ -113,9 +113,19 @@ export function PlanPicker({ slug, recommended, trialUsed, currentPlan }: { slug
                   )}
                 >
                   {busy === id ? <Spinner /> : null}
-                  {trialUsed ? `Choose ${plan.name}` : "Start 14-day free trial"}
+                  {trialUsed ? `Continue with ${plan.name}` : "Start 14-day free trial"}
                   {busy !== id && <ArrowRight className="size-4" />}
                 </button>
+                <p className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-subtle">
+                  {cardRequired ? (
+                    <>
+                      <Lock className="size-3" />
+                      {trialUsed ? "Secure checkout by Stripe" : `$0 today · then $${annual ? price * 12 : price}/${annual ? "year" : "month"}`}
+                    </>
+                  ) : (
+                    "No card required"
+                  )}
+                </p>
               </div>
             </article>
           );

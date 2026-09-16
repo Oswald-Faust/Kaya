@@ -4,7 +4,7 @@
  */
 
 export type PlanId = "none" | "free" | "launch" | "growth" | "scale";
-export type PlanStatus = "none" | "trialing" | "active" | "expired";
+export type PlanStatus = "none" | "trialing" | "active" | "past_due" | "canceled" | "expired";
 
 export interface OrgPlanRow {
   plan: string;
@@ -39,7 +39,12 @@ export function resolvePlanState(row: OrgPlanRow, now: Date = new Date()): PlanS
     }
     return { plan, status: "trialing", trialEndsAt: row.trialEndsAt, trialDaysLeft: Math.ceil(remaining / DAY_MS), fullAccess: PAID.includes(plan), needsChoice: false };
   }
-  return { plan, status: "active", trialEndsAt: row.trialEndsAt, trialDaysLeft: null, fullAccess: PAID.includes(plan), needsChoice: false };
+  if (row.planStatus === "canceled") {
+    return { plan, status: "canceled", trialEndsAt: row.trialEndsAt, trialDaysLeft: null, fullAccess: false, needsChoice: true };
+  }
+  // A failed renewal keeps access while Stripe retries the card; the app asks for a new one.
+  const status: PlanStatus = row.planStatus === "past_due" ? "past_due" : "active";
+  return { plan, status, trialEndsAt: row.trialEndsAt, trialDaysLeft: null, fullAccess: PAID.includes(plan), needsChoice: false };
 }
 
 export function trialEnd(now: Date = new Date()): Date {

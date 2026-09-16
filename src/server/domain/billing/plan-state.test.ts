@@ -24,6 +24,16 @@ describe("plan state", () => {
     expect(s).toMatchObject({ status: "active", fullAccess: false, needsChoice: false });
   });
 
+  it("keeps access while a renewal is past due", () => {
+    const s = resolvePlanState({ plan: "launch", planStatus: "past_due", trialEndsAt: null }, now);
+    expect(s).toMatchObject({ status: "past_due", fullAccess: true, needsChoice: false });
+  });
+
+  it("sends a canceled subscription back to the plan choice", () => {
+    const s = resolvePlanState({ plan: "growth", planStatus: "canceled", trialEndsAt: null }, now);
+    expect(s).toMatchObject({ status: "canceled", fullAccess: false, needsChoice: true });
+  });
+
   it("treats unknown plans as unchosen", () => {
     expect(resolvePlanState({ plan: "enterprise-legacy", planStatus: "active", trialEndsAt: null }, now).needsChoice).toBe(true);
   });

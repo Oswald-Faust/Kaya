@@ -13,6 +13,10 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   /** "false" disables /demo, which signs visitors into the demo workspace as read-only viewers. */
   ALLOW_DEMO_LOGIN: z.enum(["true", "false"]).default("true"),
+  /** Stripe secret key (sk_test_… or sk_live_…). Without it, trials start without a card. */
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
+  /** Signing secret of the /api/stripe/webhook endpoint (whsec_…). */
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -22,6 +26,8 @@ const parsed = EnvSchema.safeParse({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || undefined,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || undefined,
   ALLOW_DEMO_LOGIN: process.env.ALLOW_DEMO_LOGIN || undefined,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || undefined,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || undefined,
 });
 
 if (!parsed.success) {
@@ -32,3 +38,4 @@ export const env = parsed.data;
 
 export const llmAvailable = Boolean(env.ANTHROPIC_API_KEY);
 export const googleAuthEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+export const billingEnabled = Boolean(env.STRIPE_SECRET_KEY);

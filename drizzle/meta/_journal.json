@@ -22,6 +22,13 @@
       "when": 1789503512237,
       "tag": "0002_ordinary_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789581526858,
+      "tag": "0003_solid_zaladane",
+      "breakpoints": true
     }
   ]
 }
