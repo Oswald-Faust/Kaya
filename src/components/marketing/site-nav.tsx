@@ -101,15 +101,23 @@ export function SiteNav({ appHref = null, demoHref = "/demo" }: { appHref?: stri
           </ul>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Link href={appHref ?? "/login"} className="hidden rounded-lg px-3 py-1.5 text-[15px] transition-colors hover:bg-sunken md:inline-flex">
-              {appHref ? "Open workspace" : "Log in"}
-            </Link>
-            <Link href={demoHref} className="hidden h-9 items-center rounded-xl bg-sunken px-3.5 text-sm font-medium transition-colors hover:bg-stone sm:inline-flex">
-              Get a demo
-            </Link>
-            <Link href="/signup" className="inline-flex h-9 items-center rounded-xl bg-ink px-3.5 text-sm font-medium text-white transition-colors hover:bg-ink-hover">
-              Start free
-            </Link>
+            {appHref ? (
+              <Link href={appHref} className="inline-flex h-9 items-center rounded-xl bg-ink px-3.5 text-sm font-medium text-white transition-colors hover:bg-ink-hover">
+                Open workspace
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="hidden rounded-lg px-3 py-1.5 text-[15px] transition-colors hover:bg-sunken md:inline-flex">
+                  Log in
+                </Link>
+                <Link href={demoHref} className="hidden h-9 items-center rounded-xl bg-sunken px-3.5 text-sm font-medium transition-colors hover:bg-stone sm:inline-flex">
+                  Get a demo
+                </Link>
+                <Link href="/signup" className="inline-flex h-9 items-center rounded-xl bg-ink px-3.5 text-sm font-medium text-white transition-colors hover:bg-ink-hover">
+                  Start free
+                </Link>
+              </>
+            )}
             <button
               type="button"
               aria-label={mobile ? "Close menu" : "Open menu"}
@@ -174,12 +182,23 @@ export function SiteNav({ appHref = null, demoHref = "/demo" }: { appHref?: stri
               Pricing
             </Link>
             <div className="mt-4 grid gap-2">
-              <Link href={demoHref} onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-sunken font-medium">
-                Get a demo
-              </Link>
-              <Link href="/signup" onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-ink font-medium text-white">
-                Start free
-              </Link>
+              {appHref ? (
+                <Link href={appHref} onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-ink font-medium text-white">
+                  Open workspace
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" onClick={close} className="flex h-12 items-center justify-center rounded-xl border border-line font-medium">
+                    Log in
+                  </Link>
+                  <Link href={demoHref} onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-sunken font-medium">
+                    Get a demo
+                  </Link>
+                  <Link href="/signup" onClick={close} className="flex h-12 items-center justify-center rounded-xl bg-ink font-medium text-white">
+                    Start free
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
