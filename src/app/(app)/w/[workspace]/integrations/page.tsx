@@ -8,6 +8,7 @@ import { requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
 import { integrations } from "@/server/db/schema";
 import { getIntegration } from "@/server/integrations/catalog";
+import { connectionViews, connectSpecs } from "@/server/integrations/view";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
 import { IntegrationsCatalog } from "./catalog";
 
@@ -24,11 +25,12 @@ export default async function IntegrationsPage({ params }: PageProps<"/w/[worksp
   const { workspace } = await params;
   const ctx = await requireWorkspace(workspace);
   const product = await getPrimaryProduct(ctx.workspaceId);
-  const [rows, goal] = await Promise.all([
+  const [rows, goal, connections] = await Promise.all([
     db.select().from(integrations).where(eq(integrations.workspaceId, ctx.workspaceId)),
     product ? getActiveGoal(ctx.workspaceId, product.id) : Promise.resolve(undefined),
+    connectionViews(ctx.workspaceId),
   ]);
-  const connected = rows.filter((r) => r.status === "connected");
+  const connected = rows.filter((r) => r.status !== "disconnected");
   const canManage = ctx.role === "owner" || ctx.role === "admin";
 
   return (
@@ -66,6 +68,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/w/[worksp
                     <tr key={r.id} className="align-top">
                       <td className="px-4 py-2.5">
                         <p className="font-medium text-ink">{def?.name ?? r.provider}</p>
+                        {r.accountLabel && <p className="text-2xs text-muted">{r.accountLabel}</p>}
                         {r.syncError && <p className="mt-0.5 max-w-xs text-2xs text-warning">{r.syncError}</p>}
                       </td>
                       <td className="px-3 py-2.5">
@@ -103,7 +106,9 @@ export default async function IntegrationsPage({ params }: PageProps<"/w/[worksp
         slug={ctx.workspaceSlug}
         monthlyBudget={goal?.monthlyBudget ?? 0}
         canManage={canManage}
-        connected={connected.map((r) => ({ provider: r.provider, mode: r.mode }))}
+        isDemo={ctx.isDemo}
+        connections={connections}
+        specs={connectSpecs()}
       />
     </div>
   );

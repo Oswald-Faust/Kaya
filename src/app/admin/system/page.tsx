@@ -4,6 +4,8 @@ import { AdminPage, Card, CardHeader, Dl } from "@/components/admin/ui";
 import { requireAdmin } from "@/server/admin/guard";
 import { db } from "@/server/db/client";
 import { billingEnabled, env, googleAuthEnabled, llmAvailable } from "@/server/env";
+import { LIVE_PROVIDERS } from "@/server/integrations/providers";
+import { getIntegration } from "@/server/integrations/catalog";
 
 export const metadata = { title: "System" };
 
@@ -33,6 +35,13 @@ export default async function AdminSystemPage() {
     { name: "Claude (Anthropic)", state: llmAvailable ? "ok" : "off", detail: llmAvailable ? "Product analysis and pricing research use Claude Opus 5" : "ANTHROPIC_API_KEY not set; analysis is site-text only" },
     { name: "Stripe", state: billingEnabled ? "ok" : "off", detail: billingEnabled ? (env.STRIPE_SECRET_KEY!.startsWith("sk_live_") ? "Live mode" : "Test mode · no real charges") : "STRIPE_SECRET_KEY not set; trials start without a card" },
     { name: "Stripe webhook", state: env.STRIPE_WEBHOOK_SECRET ? "ok" : "off", detail: env.STRIPE_WEBHOOK_SECRET ? "Signing secret configured" : "No signing secret; plans sync on checkout return only" },
+    { name: "Integrations vault", state: env.INTEGRATIONS_ENCRYPTION_KEY ? "ok" : "error", detail: env.INTEGRATIONS_ENCRYPTION_KEY ? "API keys and OAuth tokens are encrypted with AES-256-GCM" : "INTEGRATIONS_ENCRYPTION_KEY missing; live connections are disabled" },
+    ...Object.values(LIVE_PROVIDERS)
+      .filter((p) => p.auth.type === "oauth")
+      .map((p): Check => {
+        const missing = p.auth.type === "oauth" ? p.auth.missingConfig() : [];
+        return { name: `${getIntegration(p.provider)?.name} OAuth app`, state: missing.length ? "off" : "ok", detail: missing.length ? `Missing ${missing.join(", ")} · see docs/integrations-setup.md` : "Configured; founders can connect" };
+      }),
     { name: "Google sign-in", state: googleAuthEnabled ? "ok" : "off", detail: googleAuthEnabled ? "OAuth client configured" : "GOOGLE_CLIENT_ID / SECRET not set; button hidden" },
     { name: "Public URL", state: env.APP_URL ? "ok" : "off", detail: env.APP_URL ?? "APP_URL not set; request origin is used" },
     { name: "Demo access", state: env.ALLOW_DEMO_LOGIN === "true" ? "ok" : "off", detail: env.ALLOW_DEMO_LOGIN === "true" ? "/demo opens the demo workspace read-only" : "Disabled" },

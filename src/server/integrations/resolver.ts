@@ -5,12 +5,7 @@ import { integrations, workspaces } from "@/server/db/schema";
 import type { MarketingIntegrationAdapter } from "./adapter";
 import { providersFor, type Capability } from "./catalog";
 import { createDemoAdapter, HostedPagesAdapter } from "./demo-adapters";
-
-/**
- * Live adapters require real credentials from the token vault. None are
- * registered in this build; see docs/build-status.md → Blocked.
- */
-const LIVE_ADAPTERS: Record<string, (workspaceId: string) => MarketingIntegrationAdapter> = {};
+import { LiveAdapter } from "./live-adapter";
 
 export interface ResolvedAdapter {
   adapter: MarketingIntegrationAdapter;
@@ -37,10 +32,8 @@ export async function resolveAdapter(workspaceId: string, capability: Capability
     .sort((a, b) => (a.mode === "live" ? -1 : 0) - (b.mode === "live" ? -1 : 0));
 
   for (const integration of usable) {
-    const adapter =
-      integration.mode === "live"
-        ? LIVE_ADAPTERS[integration.provider]?.(workspaceId)
-        : createDemoAdapter(integration.provider, workspaceId);
+    const adapter: MarketingIntegrationAdapter | null =
+      integration.mode === "live" ? new LiveAdapter(integration) : createDemoAdapter(integration.provider, workspaceId);
     if (adapter && adapter.capabilities().includes(capability)) {
       return { adapter, integrationId: integration.id };
     }

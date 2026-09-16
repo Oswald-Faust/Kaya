@@ -1,10 +1,8 @@
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ConnectBoard } from "@/components/onboarding/connect-board";
 import { OnboardingSteps } from "@/components/onboarding/steps";
 import { requireOnboardingAccount } from "@/server/context";
-import { db } from "@/server/db/client";
-import { integrations } from "@/server/db/schema";
+import { connectionViews, connectSpecs } from "@/server/integrations/view";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
 
 export const metadata = { title: "Connect your data" };
@@ -14,7 +12,7 @@ export default async function ConnectPage({ params }: PageProps<"/start/[workspa
   const ctx = await requireOnboardingAccount(workspace, "connect");
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) redirect("/start");
-  const [goal, rows] = await Promise.all([getActiveGoal(ctx.workspaceId, product.id), db.select().from(integrations).where(eq(integrations.workspaceId, ctx.workspaceId))]);
+  const [goal, connections] = await Promise.all([getActiveGoal(ctx.workspaceId, product.id), connectionViews(ctx.workspaceId)]);
   if (!goal) redirect(`/start/${ctx.workspaceSlug}/goal`);
 
   return (
@@ -31,7 +29,9 @@ export default async function ConnectPage({ params }: PageProps<"/start/[workspa
         slug={ctx.workspaceSlug}
         monthlyBudget={goal.monthlyBudget}
         canManage={ctx.role === "owner" || ctx.role === "admin"}
-        connected={rows.filter((r) => r.status === "connected").map((r) => ({ provider: r.provider, mode: r.mode }))}
+        isDemo={ctx.isDemo}
+        connections={connections}
+        specs={connectSpecs()}
       />
     </main>
   );

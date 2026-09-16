@@ -736,7 +736,36 @@ export const integrations = pgTable(
       onDelete: "set null",
     }),
     connectedAt: timestamp("connected_at", { withTimezone: true }),
+    /** External account the connection acts on (GA4 property, ad account, Stripe account…). */
+    accountId: text("account_id"),
+    accountLabel: text("account_label"),
+    /** Non-secret connection details: selectable accounts, scopes granted, last sync summary. */
+    metadata: jsonb("metadata").$type<IntegrationMetadata>().notNull().default({}),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("integrations_ws_provider_idx").on(t.workspaceId, t.provider)],
 );
+
+export interface IntegrationMetadata {
+  accounts?: { id: string; label: string; detail?: string }[];
+  scopes?: string[];
+  connectedBy?: string;
+  lastSync?: { at: string; summary: string; data?: Record<string, unknown> };
+  [key: string]: unknown;
+}
+
+/**
+ * Encrypted secrets (API keys, OAuth tokens). AES-256-GCM with a key that
+ * lives only in the environment; the database alone can't decrypt them.
+ * Referenced from credential_references.vault_key.
+ */
+export const vaultEntries = pgTable("vault_entries", {
+  id: id(),
+  workspaceId: workspaceRef(),
+  ciphertext: text("ciphertext").notNull(),
+  iv: text("iv").notNull(),
+  tag: text("tag").notNull(),
+  keyVersion: integer("key_version").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});

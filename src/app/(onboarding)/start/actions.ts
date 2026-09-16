@@ -21,7 +21,6 @@ import {
   reviewCompetitor,
   reviewIcp,
   saveGoal,
-  setDemoIntegration,
 } from "@/server/services/onboarding";
 import { runStrategyGeneration, startStrategyRun } from "@/server/services/strategy";
 import { createGuestUser } from "@/server/services/account";
@@ -151,10 +150,6 @@ export async function saveGoalAction(slug: string, _prev: FormState, formData: F
     return { error: toError(error) };
   }
   redirect(`/start/${slug}/connect`);
-}
-
-export async function integrationAction(slug: string, provider: string, connect: boolean) {
-  return mutate(slug, (ctx) => setDemoIntegration(ctx, provider, connect));
 }
 
 export async function finishConnectAction(slug: string): Promise<void> {

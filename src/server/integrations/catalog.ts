@@ -60,7 +60,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     priority: "P0",
     stage: "S2 Data Brain",
     mustHave: true,
-    authType: "oauth",
+    authType: "api_key",
     risk: "read_only",
     reads: ["READ_REVENUE", "READ_SUBSCRIPTIONS"],
     writes: [],
@@ -69,7 +69,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
       { label: "Customers, subscriptions and invoices", access: "read" },
       { label: "Payments, refunds and churn events", access: "read" },
     ],
-    apiNotes: "OAuth/Connect-style access; webhook sync with reconciliation.",
+    apiNotes: "Restricted read-only API key; MRR, subscriptions and 30-day collected revenue.",
   },
   {
     provider: "paddle",
@@ -257,7 +257,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     reads: ["READ_SOCIAL_ANALYTICS"],
     writes: ["PUBLISH_SOCIAL_POST"],
     unlocks: "Founder and company posts, published only after approval.",
-    permissions: [{ label: "Publish approved posts; read post analytics", access: "write" }],
+    permissions: [{ label: "Publish posts you approved, as you", access: "write" }],
     apiNotes: "Organic scopes separate from ads; never assume personal publishing scope.",
   },
   {
@@ -350,8 +350,11 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     reads: [],
     writes: ["TRACK_CREATOR_DEALS"],
     unlocks: "Attribute revenue to creator codes and links.",
-    permissions: [{ label: "Tracking links, codes, deals and commissions", access: "write" }],
-    apiNotes: "May begin as internal tracking plus Stripe coupon mapping.",
+    permissions: [
+      { label: "Affiliates, visitors, leads and conversions", access: "read" },
+      { label: "Create affiliates and referral links for creator deals you approve", access: "write" },
+    ],
+    apiNotes: "Rewardful API: affiliates, referral links and Stripe-attributed conversions.",
   },
 ];
 

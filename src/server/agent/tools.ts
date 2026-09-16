@@ -7,7 +7,7 @@ import { CHANNELS, isChannel } from "@/server/domain/channels";
 import { computeKpis, splitWindows, pctChange } from "@/server/domain/analytics/metrics";
 import { DomainError } from "@/server/domain/errors";
 import { resolveAdapter } from "@/server/integrations/resolver";
-import type { Capability } from "@/server/integrations/catalog";
+import { READ_CAPABILITIES, type Capability } from "@/server/integrations/catalog";
 import {
   evaluateAndComplete,
   evaluateRow,
@@ -290,6 +290,25 @@ const completeExperiment = defineTool({
   },
 });
 
+const readLive = defineTool({
+  name: "integrations.read_live",
+  title: "Read live data from a connected tool",
+  description: "Reads the latest 30 days straight from a connected integration (Stripe, GA4, Search Console, PostHog, Plausible, ad accounts, email, X). Use it to check real numbers before recommending or acting.",
+  capability: "READ_ANALYTICS",
+  risk: "R0",
+  external: false,
+  supportsDryRun: true,
+  permissions: ALL_ROLES,
+  input: z.object({ capability: z.enum(READ_CAPABILITIES) }),
+  idempotencyKey: (i) => i.capability,
+  describe: (i) => ({ title: `Read live ${i.capability.replace(/^READ_/, "").toLowerCase().replace(/_/g, " ")}` }),
+  async run(input, ctx) {
+    const { adapter, integrationId } = await requireAdapter(ctx, input.capability);
+    const result = await adapter.read(input.capability, {});
+    return { output: result.data, adapter: adapter.provider, isDemo: adapter.mode === "demo", targetType: "integration", targetId: integrationId ?? adapter.provider };
+  },
+});
+
 /* ─────────────────────────── Publish (R2) ─────────────────────────── */
 
 const publishPage = defineTool({
@@ -316,6 +335,44 @@ const publishPage = defineTool({
       }
     }
     return { output: result.data, adapter: adapter.provider, isDemo: adapter.mode === "demo", targetType: "creative_asset", targetId: input.assetId };
+  },
+});
+
+const publishSocialPost = defineTool({
+  name: "social.publish_post",
+  title: "Publish a social post",
+  description: "Publishes an approved post to the connected X or LinkedIn account, as the founder.",
+  capability: "PUBLISH_SOCIAL_POST",
+  risk: "R2",
+  external: true,
+  supportsDryRun: true,
+  permissions: MANAGERS,
+  input: z.object({ text: z.string().min(1).max(3000) }),
+  idempotencyKey: (i) => `post:${i.text.slice(0, 200)}`,
+  describe: (i) => ({ title: "Publish post", change: i.text.slice(0, 120) }),
+  async run(input, ctx, opts) {
+    const { adapter } = await requireAdapter(ctx, "PUBLISH_SOCIAL_POST");
+    const result = await adapter.execute("PUBLISH_SOCIAL_POST", input, opts);
+    return { output: result.data, adapter: adapter.provider, isDemo: adapter.mode === "demo", targetType: "social_post", targetId: result.externalId };
+  },
+});
+
+const sendEmail = defineTool({
+  name: "email.send",
+  title: "Send an email",
+  description: "Sends an approved email through the connected Resend or Brevo account, from the founder's verified sender.",
+  capability: "SEND_EMAIL",
+  risk: "R2",
+  external: true,
+  supportsDryRun: true,
+  permissions: MANAGERS,
+  input: z.object({ to: z.union([z.string().email(), z.array(z.string().email()).min(1).max(50)]), subject: z.string().min(1).max(200), html: z.string().min(1).max(100_000) }),
+  idempotencyKey: (i) => `email:${[i.to].flat().join(",")}:${i.subject}`,
+  describe: (i) => ({ title: `Send “${i.subject}”`, change: `To ${[i.to].flat().length} recipient(s)` }),
+  async run(input, ctx, opts) {
+    const { adapter } = await requireAdapter(ctx, "SEND_EMAIL");
+    const result = await adapter.execute("SEND_EMAIL", input, opts);
+    return { output: result.data, adapter: adapter.provider, isDemo: adapter.mode === "demo", targetType: "email", targetId: result.externalId };
   },
 });
 
@@ -455,11 +512,14 @@ export const TOOLS = [
   queryKpis,
   channelBreakdown,
   readBusinessContext,
+  readLive,
   rankExperimentQueue,
   evaluateExperimentTool,
   proposeExperiment,
   completeExperiment,
   publishPage,
+  publishSocialPost,
+  sendEmail,
   updateDailyBudget,
   pauseCampaign,
   launchCampaign,

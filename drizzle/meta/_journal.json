@@ -36,6 +36,13 @@
       "when": 1789583085316,
       "tag": "0004_elite_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789584720301,
+      "tag": "0005_sparkling_azazel",
+      "breakpoints": true
     }
   ]
 }
