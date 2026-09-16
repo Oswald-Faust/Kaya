@@ -2,6 +2,9 @@ import Link from "next/link";
 import { KayaWordmark } from "@/components/brand/logo";
 import { currentUser } from "@/server/context";
 
+// Product analysis runs after the response (crawl, Claude extraction, pricing research).
+export const maxDuration = 300;
+
 export default async function OnboardingLayout({ children }: LayoutProps<"/start">) {
   const user = await currentUser();
   return (

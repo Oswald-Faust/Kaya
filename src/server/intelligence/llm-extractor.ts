@@ -69,7 +69,7 @@ export async function extractWithLlm(pages: CrawledPage[], rootUrl: string, draf
   const documents = pages
     .map((p, i) => {
       const headings = p.parsed.headings.map((h) => `${"#".repeat(h.level)} ${h.text}`).join("\n");
-      const body = [`Title: ${p.parsed.title ?? ""}`, `Description: ${p.parsed.description ?? ""}`, `Page type: ${p.kind}`, "Headings:", headings, "Text:", p.parsed.text.slice(0, PAGE_CHARS)].join("\n");
+      const body = [`Title: ${p.parsed.title ?? ""}`, `Description: ${p.parsed.description ?? ""}`, `Page type: ${p.kind}`, "Headings:", headings, "Text:", p.parsed.text.slice(0, p.kind === "pricing" ? PAGE_CHARS * 3 : PAGE_CHARS)].join("\n");
       return asUntrustedDocument(i, p.url, body);
     })
     .join("\n\n");

@@ -14,6 +14,7 @@ import { groundExtraction } from "./grounding";
 import { extractHeuristically, type CrawledPage } from "./heuristic-extractor";
 import { parseHtml } from "./html";
 import { extractWithLlm, EXTRACTION_PROMPT_VERSION } from "./llm-extractor";
+import { researchPricingWithClaude } from "./pricing-research";
 import { competitorsFromExtraction, factsFromExtraction, icpsFromExtraction } from "./to-memory";
 
 export const ANALYZER_ID = "agent:product-analyst";
@@ -89,7 +90,7 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
       });
       await save({ pagesFound: discovery.candidates.length + 1 });
 
-      const pricingUrl = discovery.selected.find((u) => /pricing|plans/i.test(u));
+      let pricingUrl = discovery.selected.find((u) => /pricing|plans|tarif|prix/i.test(u));
       if (pricingUrl) {
         const s = await rec.step("tool", "Reading pricing");
         const r = await fetchPage(pricingUrl, root, env.CRAWL_TIMEOUT_MS);
@@ -98,7 +99,18 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
         await rec.finish(s, r.page ? "done" : "failed", { detail: r.page ? new URL(r.page.url).pathname : r.snapshot.error });
         await save({ pagesRead: pages.length });
       } else {
-        await rec.step("observation", "No pricing page found", { status: "skipped", detail: "You can add pricing during review" });
+        // Many sites don't link pricing from the homepage; try the usual paths before giving up.
+        const s = await rec.step("tool", "Looking for a pricing page");
+        for (const path of ["/pricing", "/plans", "/tarifs", "/prix"]) {
+          const r = await fetchPage(new URL(path, root).toString(), root, env.CRAWL_TIMEOUT_MS);
+          if (!r.page) continue;
+          snapshot.push(r.snapshot);
+          pages.push(r.page);
+          pricingUrl = r.page.url;
+          break;
+        }
+        await rec.finish(s, pricingUrl ? "done" : "skipped", { detail: pricingUrl ? new URL(pricingUrl).pathname : llmAvailable ? "Not linked on the site; Claude will look for it" : "You can add pricing during review" });
+        await save({ pagesRead: pages.length });
       }
 
       const rest = discovery.selected.filter((u) => u !== pricingUrl);
@@ -145,6 +157,24 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
         extraction = { ...extraction, warnings: [...extraction.warnings, "Model refinement failed, so this analysis is based on the site text only."] };
       }
       await save({ extraction, extractor });
+
+      if (!state.manual && !extraction.pricing.plans.some((p) => p.price !== null)) {
+        const ps = await rec.step("tool", "Researching pricing with Claude");
+        try {
+          const pricing = await researchPricingWithClaude(rootUrl, extraction.productName.value || state.host);
+          if (pricing) {
+            extraction = { ...extraction, pricing: { ...extraction.pricing, ...pricing, freeTrial: pricing.freeTrial ?? extraction.pricing.freeTrial } };
+            const priced = pricing.plans.filter((p) => p.price !== null);
+            await rec.finish(ps, "done", { detail: `${pricing.plans.length} plans found on ${new URL(pricing.sourceUrl ?? rootUrl).pathname || "/"}: ${priced.map((p) => `${p.name} ${p.price}`).join(", ")}` });
+          } else {
+            await rec.finish(ps, "skipped", { detail: "No public prices on the site; you can add them during review" });
+          }
+        } catch (error) {
+          console.error(JSON.stringify({ level: "warn", msg: "pricing_research_failed", runId, error: String(error) }));
+          await rec.finish(ps, "failed", { detail: "Pricing research unavailable; add pricing during review" });
+        }
+        await save({ extraction, extractor });
+      }
     } else {
       extraction = { ...extraction, warnings: [...extraction.warnings, "No language model is configured (ANTHROPIC_API_KEY). Competitors and audiences come only from what your site states."] };
       await save({ extraction });
