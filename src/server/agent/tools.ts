@@ -2,8 +2,10 @@ import "server-only";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
-import { businessFacts, campaigns, competitors, experimentVariants, experiments, icps } from "@/server/db/schema";
+import { businessFacts, campaigns, competitors, creativeAssets, experimentVariants, experiments, icps, products } from "@/server/db/schema";
 import { CHANNELS, isChannel } from "@/server/domain/channels";
+import { assetKindFor, draftAsset } from "@/server/domain/content/draft";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { computeKpis, splitWindows, pctChange } from "@/server/domain/analytics/metrics";
 import { DomainError } from "@/server/domain/errors";
 import { resolveAdapter } from "@/server/integrations/resolver";
@@ -309,6 +311,64 @@ const readLive = defineTool({
   },
 });
 
+const draftContent = defineTool({
+  name: "content.draft_asset",
+  title: "Draft the content for an experiment",
+  description: "Writes the page, email, ad or post an experiment needs, from confirmed memory and the strategy. A draft only: publishing is a separate, approved action.",
+  capability: "DRAFT_CONTENT",
+  risk: "R1",
+  external: false,
+  supportsDryRun: true,
+  permissions: ALL_ROLES,
+  input: z.object({ experimentId: z.string(), locale: z.string().max(5).optional() }),
+  idempotencyKey: (i) => i.experimentId,
+  describe: () => ({ title: "Draft the content" }),
+  async run(input, ctx, opts) {
+    const experiment = await getExperimentById(ctx.workspaceId, input.experimentId);
+    const existing = await db
+      .select()
+      .from(creativeAssets)
+      .where(and(eq(creativeAssets.workspaceId, ctx.workspaceId), eq(creativeAssets.experimentId, experiment.id)))
+      .orderBy(desc(creativeAssets.createdAt))
+      .limit(1);
+    if (existing[0]) {
+      return { output: { assetId: existing[0].id, kind: existing[0].kind, title: existing[0].title, reused: true }, targetType: "creative_asset", targetId: existing[0].id };
+    }
+
+    const kind = assetKindFor(experiment.type, experiment.channel);
+    if (!kind) throw new DomainError("validation", "This experiment runs on founder time; there is nothing to draft.");
+    if (opts.dryRun) return { output: { dryRun: true, kind } };
+
+    const [product, facts, icpRows, competitorRows] = await Promise.all([
+      db.query.products.findFirst({ where: eq(products.id, ctx.productId) }),
+      db
+        .select()
+        .from(businessFacts)
+        .where(and(eq(businessFacts.workspaceId, ctx.workspaceId), eq(businessFacts.productId, ctx.productId), eq(businessFacts.status, "confirmed"))),
+      db.select().from(icps).where(and(eq(icps.workspaceId, ctx.workspaceId), eq(icps.productId, ctx.productId))).orderBy(icps.priority),
+      db.select().from(competitors).where(and(eq(competitors.workspaceId, ctx.workspaceId), eq(competitors.productId, ctx.productId))).limit(1),
+    ]);
+    if (!product) throw new DomainError("not_found", "This workspace has no product yet.");
+
+    const drafted = draftAsset({
+      experiment,
+      product: { name: product.name, oneLiner: product.oneLiner ?? facts.find((f) => f.key === "product.one_liner")?.statement ?? product.name, url: product.url },
+      features: facts.filter((f) => f.category === "feature").map((f) => f.statement),
+      icp: icpRows[0]?.name ?? null,
+      competitor: competitorRows[0]?.name ?? null,
+      locale: (input.locale as Locale) ?? DEFAULT_LOCALE,
+    });
+    if (!drafted) throw new DomainError("validation", "There is nothing to draft for this experiment.");
+
+    const id = stableId("asset", ctx.workspaceId, `${experiment.id}:${drafted.kind}`);
+    await db
+      .insert(creativeAssets)
+      .values({ id, workspaceId: ctx.workspaceId, experimentId: experiment.id, kind: drafted.kind, channel: experiment.channel, title: drafted.title, body: drafted.body, status: "draft" })
+      .onConflictDoNothing();
+    return { output: { assetId: id, kind: drafted.kind, title: drafted.title, reused: false }, targetType: "creative_asset", targetId: id };
+  },
+});
+
 /* ─────────────────────────── Publish (R2) ─────────────────────────── */
 
 const publishPage = defineTool({
@@ -517,6 +577,7 @@ export const TOOLS = [
   evaluateExperimentTool,
   proposeExperiment,
   completeExperiment,
+  draftContent,
   publishPage,
   publishSocialPost,
   sendEmail,

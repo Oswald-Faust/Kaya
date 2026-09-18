@@ -1,3 +1,7 @@
+import type { Locale } from "@/i18n/config";
+import { dictionaries } from "@/i18n/dictionaries";
+import { fmt } from "@/i18n/format";
+
 export type GoalMetric = "customers" | "mrr" | "signups" | "cac" | "trial_conversion" | "custom";
 export type GoalUnit = "usd" | "count" | "pct";
 
@@ -43,27 +47,38 @@ export function getGoalTemplate(id: string): GoalTemplate | undefined {
   return GOAL_TEMPLATES.find((t) => t.id === id);
 }
 
-function money(n: number): string {
-  return n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(n)}`;
+function money(n: number, locale: Locale): string {
+  const k = (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1);
+  if (locale === "fr") return n >= 1000 ? `${k.replace(".", ",")} k$` : `${Math.round(n)} $`;
+  return n >= 1000 ? `$${k}k` : `$${Math.round(n)}`;
 }
 
-export function goalTitle(template: GoalTemplate, baseline: number | null, target: number | null, custom?: string): string {
+/** The goal as a sentence, in the language the founder set it in (it is stored with the goal). */
+/** A stored goal's title in the viewer's language. Free-text goals keep what the founder typed. */
+export function localizedGoalTitle(goal: { template: string; title: string; baselineValue: number | null; targetValue: number | null }, locale: Locale): string {
+  const template = getGoalTemplate(goal.template);
+  if (!template || template.id === "custom" || template.id === "new_market") return goal.title;
+  return goalTitle(template, goal.baselineValue, goal.targetValue, undefined, locale);
+}
+
+export function goalTitle(template: GoalTemplate, baseline: number | null, target: number | null, custom?: string, locale: Locale = "en"): string {
+  const t = dictionaries[locale].onboarding.goal.titles;
   switch (template.id) {
     case "first_customers":
-      return `Get my first ${target ?? 10} customers`;
+      return fmt(t.first_customers, { target: target ?? 10 });
     case "reach_1k_mrr":
-      return `Reach ${money(target ?? 1000)} MRR`;
+      return fmt(t.reach_1k_mrr, { target: money(target ?? 1000, locale) });
     case "grow_mrr":
-      return baseline !== null && target !== null ? `Grow MRR from ${money(baseline)} to ${money(target)}` : "Grow MRR";
+      return baseline !== null && target !== null ? fmt(t.grow_mrr_range, { baseline: money(baseline, locale), target: money(target, locale) }) : t.grow_mrr;
     case "signups_100":
-      return `Get ${target ?? 100} qualified signups a month`;
+      return fmt(t.signups_100, { target: target ?? 100 });
     case "reduce_cac":
-      return `Reduce CAC below ${money(target ?? 30)}`;
+      return fmt(t.reduce_cac, { target: money(target ?? 30, locale) });
     case "trial_conversion":
-      return target !== null ? `Increase trial → paid conversion to ${Math.round(target * 100)}%` : "Increase trial → paid conversion";
+      return target !== null ? fmt(t.trial_conversion_target, { target: Math.round(target * 100) }) : t.trial_conversion;
     case "new_market":
-      return custom ? `Launch into ${custom}` : "Launch into a new market";
+      return custom ? fmt(t.new_market_named, { market: custom }) : t.new_market;
     default:
-      return custom?.trim() || "Custom growth goal";
+      return custom?.trim() || t.custom;
   }
 }

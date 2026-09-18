@@ -14,6 +14,7 @@ import { groundExtraction } from "./grounding";
 import { extractHeuristically, type CrawledPage } from "./heuristic-extractor";
 import { parseHtml } from "./html";
 import { extractWithLlm, EXTRACTION_PROMPT_VERSION } from "./llm-extractor";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { researchPricingWithClaude } from "./pricing-research";
 import { competitorsFromExtraction, factsFromExtraction, icpsFromExtraction } from "./to-memory";
 
@@ -39,7 +40,8 @@ const pause = () => new Promise((r) => setTimeout(r, STEP_PAUSE_MS));
  * write proposed facts into Business Memory. Every stage is persisted as a run
  * step so the onboarding screen can show real progress and partial results.
  */
-export async function runProductAnalysis(workspaceId: string, runId: string): Promise<void> {
+/** `locale` is the founder's language: what the model writes is meant for them to read. */
+export async function runProductAnalysis(workspaceId: string, runId: string, locale: Locale = DEFAULT_LOCALE): Promise<void> {
   const run = await db.query.agentRuns.findFirst({ where: and(eq(t.agentRuns.id, runId), eq(t.agentRuns.workspaceId, workspaceId)) });
   if (!run?.productId) return;
   const product = await db.query.products.findFirst({ where: eq(t.products.id, run.productId) });
@@ -109,7 +111,7 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
           pricingUrl = r.page.url;
           break;
         }
-        await rec.finish(s, pricingUrl ? "done" : "skipped", { detail: pricingUrl ? new URL(pricingUrl).pathname : llmAvailable ? "Not linked on the site; Claude will look for it" : "You can add pricing during review" });
+        await rec.finish(s, pricingUrl ? "done" : "skipped", { detail: pricingUrl ? new URL(pricingUrl).pathname : llmAvailable ? "Not linked on the site; AI will look for it" : "You can add pricing during review" });
         await save({ pagesRead: pages.length });
       }
 
@@ -144,9 +146,9 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
     // ── LLM refinement: structured output, grounded against the crawl ──
     if (llmAvailable) {
       await save({ stage: "refining" });
-      const s = await rec.step("tool", "Studying the category with Claude");
+      const s = await rec.step("tool", "Studying the category with AI");
       try {
-        const refined = await extractWithLlm(pages, rootUrl, extraction);
+        const refined = await extractWithLlm(pages, rootUrl, extraction, locale);
         extraction = groundExtraction(refined.result, pages);
         extractor = "llm";
         await rec.setRun({ planner: "llm", model: refined.model, promptVersion: EXTRACTION_PROMPT_VERSION });
@@ -159,9 +161,9 @@ export async function runProductAnalysis(workspaceId: string, runId: string): Pr
       await save({ extraction, extractor });
 
       if (!state.manual && !extraction.pricing.plans.some((p) => p.price !== null)) {
-        const ps = await rec.step("tool", "Researching pricing with Claude");
+        const ps = await rec.step("tool", "Researching pricing with AI");
         try {
-          const pricing = await researchPricingWithClaude(rootUrl, extraction.productName.value || state.host);
+          const pricing = await researchPricingWithClaude(rootUrl, extraction.productName.value || state.host, locale);
           if (pricing) {
             extraction = { ...extraction, pricing: { ...extraction.pricing, ...pricing, freeTrial: pricing.freeTrial ?? extraction.pricing.freeTrial } };
             const priced = pricing.plans.filter((p) => p.price !== null);

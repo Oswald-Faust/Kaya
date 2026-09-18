@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/states";
 
 export default function WorkspaceLoading() {
   return (
-    <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6" aria-busy="true" aria-label="Loading">
+    <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6" aria-busy="true" >
       <Skeleton className="h-8 w-56" />
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line lg:grid-cols-6">
         {Array.from({ length: 6 }, (_, i) => (

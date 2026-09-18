@@ -5,6 +5,7 @@ import { db } from "@/server/db/client";
 import * as t from "@/server/db/schema";
 import { DomainError } from "@/server/domain/errors";
 import { BUDGET_BANDS, getGoalTemplate, goalTitle } from "@/server/domain/strategy/goals";
+import type { Locale } from "@/i18n/config";
 import { getIntegration } from "@/server/integrations/catalog";
 import { normalizeProductUrl } from "@/server/intelligence/url-safety";
 import type { AnalysisRunResult } from "@/server/intelligence/analyze";
@@ -251,7 +252,7 @@ export interface GoalInput {
   customText: string | null;
 }
 
-export async function saveGoal(ctx: WorkspaceContext, input: GoalInput) {
+export async function saveGoal(ctx: WorkspaceContext, input: GoalInput, locale: Locale = "en") {
   assertWriter(ctx);
   const product = await requireProduct(ctx);
   const template = getGoalTemplate(input.template);
@@ -277,7 +278,7 @@ export async function saveGoal(ctx: WorkspaceContext, input: GoalInput) {
       workspaceId: ctx.workspaceId,
       productId: product.id,
       template: template.id,
-      title: goalTitle(template, baseline, target, input.customText ?? undefined),
+      title: goalTitle(template, baseline, target, input.customText ?? undefined, locale),
       metric: template.metric,
       baselineValue: baseline,
       targetValue: target,

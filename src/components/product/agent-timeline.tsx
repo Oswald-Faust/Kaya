@@ -1,7 +1,11 @@
+"use client";
+
 import { BookOpen, Check, Database, Eye, ListChecks, ShieldAlert, Wrench, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { ToolCallDetails, type ToolCallView } from "./tool-call-details";
+import { useI18n } from "@/i18n/client";
+import { translateRunText } from "@/i18n/run-text";
 
 export interface TimelineStep {
   id: string;
@@ -23,20 +27,13 @@ const KIND_ICON: Record<string, ReactNode> = {
   message: <Eye />,
 };
 
-const KIND_LABEL: Record<string, string> = {
-  context: "Context",
-  plan: "Plan",
-  tool: "Action",
-  approval: "Approval",
-  observation: "Observation",
-  learning: "Learning",
-  message: "Message",
-};
 
 /** Execution timeline: every step the agent took, with the tool calls underneath it. */
 export function ActivityTimeline({ steps, toolCalls }: { steps: TimelineStep[]; toolCalls: (ToolCallView & { stepId: string | null })[] }) {
+  const { t, locale } = useI18n();
+  const tl = t.app.timeline;
   if (steps.length === 0) {
-    return <p className="px-1 py-4 text-sm text-muted">No steps recorded yet.</p>;
+    return <p className="px-1 py-4 text-sm text-muted">{tl.empty}</p>;
   }
   return (
     <ol className="relative">
@@ -48,18 +45,18 @@ export function ActivityTimeline({ steps, toolCalls }: { steps: TimelineStep[]; 
             <StepMarker kind={step.kind} status={step.status} />
             <div className="min-w-0 pt-0.5">
               <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-2xs text-subtle">{KIND_LABEL[step.kind] ?? step.kind}</span>
+                <span className="text-2xs text-subtle">{tl.kinds[step.kind] ?? step.kind}</span>
                 <span className={cn("text-sm", step.status === "failed" ? "text-negative" : "text-ink", step.status === "skipped" && "text-subtle line-through")}>
-                  {step.title}
+                  {translateRunText(step.title, locale)}
                 </span>
-                {step.status === "waiting" && <span className="text-2xs font-medium text-agent">Waiting for you</span>}
+                {step.status === "waiting" && <span className="text-2xs font-medium text-agent">{tl.waiting}</span>}
                 {step.startedAt && (
                   <time className="ml-auto text-2xs text-subtle tabular" dateTime={step.startedAt.toISOString()}>
                     {step.startedAt.toISOString().slice(11, 19)}
                   </time>
                 )}
               </div>
-              {step.detail && <p className="mt-0.5 text-xs text-muted">{step.detail}</p>}
+              {step.detail && <p className="mt-0.5 text-xs text-muted">{translateRunText(step.detail, locale)}</p>}
               {calls.length > 0 && (
                 <div className="mt-2 space-y-1.5">
                   {calls.map((c) => (

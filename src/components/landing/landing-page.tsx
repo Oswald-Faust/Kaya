@@ -15,6 +15,8 @@ import { ClosingCta } from "@/components/marketing/closing-cta";
 import { CountUp, InView, Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
 import type { MarketingLinks } from "@/server/marketing";
 import { cn } from "@/lib/cn";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
 
 const button = {
   black: "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 text-[15px] font-medium text-white transition-colors hover:bg-ink-hover",
@@ -25,15 +27,17 @@ const button = {
  * The Kaya home page body, shared by both versions of the landing page.
  * `overlapStack` pulls the integrations card over the hero, as on Clay.
  */
-export function LandingPage({ hero, links, overlapStack = false }: { hero: ReactNode; links: MarketingLinks; overlapStack?: boolean }) {
+export async function LandingPage({ hero, links, overlapStack = false }: { hero: ReactNode; links: MarketingLinks; overlapStack?: boolean }) {
+  const { t } = await getI18n();
+  const l = t.landing;
   const { appHref, demoHref, demoSlug } = links;
   const inDemo = (path: string) => (demoSlug ? `/w/${demoSlug}${path}` : `/demo?to=${encodeURIComponent(path)}`);
 
   return (
     <div className="bg-surface text-ink">
       <Link href="/pricing" className="relative z-[60] flex h-10 items-center justify-center gap-2 bg-lime px-4 text-sm font-medium text-ink">
-        <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] text-lime">New</span>
-        <span className="truncate">Kaya pricing is live: start free, pay as the agent does more</span>
+        <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] text-lime">{l.announcementNew}</span>
+        <span className="truncate">{l.announcement}</span>
         <ArrowRight className="size-3.5 shrink-0" />
       </Link>
 
@@ -46,8 +50,7 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
         <div className="mx-auto max-w-[1360px] overflow-hidden rounded-[32px] bg-cream py-8 sm:py-10">
           <Reveal className="px-6 pb-8 text-center">
             <p className="mx-auto max-w-2xl text-[clamp(20px,2vw,28px)] leading-snug tracking-[-0.02em]">
-              Works with the stack growing software companies already run. <span className="font-semibold">Connected</span> today,{" "}
-              <span className="font-semibold">more</span> every month.
+              {l.stackBefore} <span className="font-semibold">{l.stackConnected}</span> {l.stackMiddle} <span className="font-semibold">{l.stackMore}</span> {l.stackAfter}
             </p>
           </Reveal>
           <LogoMarquee />
@@ -58,9 +61,9 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       <section id="product" className="mx-auto max-w-[1360px] scroll-mt-24 px-5 pt-28 sm:pt-36">
         <Reveal className="text-center">
           <h2 className="text-[clamp(42px,5.6vw,80px)] leading-[0.98] font-medium tracking-[-0.045em]">
-            Founders grow
+            {l.foundersLine1}
             <br />
-            on Kaya
+            {l.foundersLine2}
           </h2>
         </Reveal>
         <UseCaseTabs />
@@ -70,19 +73,19 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       <section id="grow" className="scroll-mt-24 px-5 pt-28 sm:pt-36">
         <div className="mx-auto max-w-3xl">
           <Reveal>
-            <h2 className="text-center text-[clamp(38px,4.6vw,60px)] leading-[1] font-medium tracking-[-0.045em]">What do you want to grow?</h2>
+            <h2 className="text-center text-[clamp(38px,4.6vw,60px)] leading-[1] font-medium tracking-[-0.045em]">{l.growTitle}</h2>
           </Reveal>
           <Reveal delay={0.1} className="mt-10 rounded-[28px] border border-line bg-surface p-3 shadow-float sm:p-4">
             <StartForm autoFocus={false} className="" suggestions={["linear.app", "cal.com", "plausible.io"]} />
           </Reveal>
           <Stagger className="mt-6 divide-y divide-line">
-            {["Get me my first 20 paying users.", "We have $500 this month. Find the best way to spend it.", "Why did signups fall this week?"].map((ask) => (
+            {l.asks.map((ask) => (
               <StaggerItem key={ask} className="flex items-center gap-3 py-3.5 text-[15px] text-muted">
                 <span className="grid size-7 place-items-center rounded-lg bg-cream">
                   <KayaMark tile={false} className="size-4" />
                 </span>
                 <span>
-                  Then ask Kaya: <span className="text-ink">“{ask}”</span>
+                  {l.thenAsk} <span className="text-ink">“{ask}”</span>
                 </span>
               </StaggerItem>
             ))}
@@ -94,18 +97,13 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       <section className="px-3 pt-28 sm:px-5 sm:pt-36">
         <div className="mx-auto max-w-[1360px] overflow-hidden rounded-[32px] bg-cream">
           <Reveal className="px-6 pt-14 text-center sm:pt-20">
-            <h2 className="mx-auto max-w-3xl text-[clamp(38px,4.8vw,64px)] leading-[1] font-medium tracking-[-0.045em]">Understand, decide, test and learn. Every week.</h2>
+            <h2 className="mx-auto max-w-3xl text-[clamp(38px,4.8vw,64px)] leading-[1] font-medium tracking-[-0.045em]">{l.loopTitle}</h2>
           </Reveal>
           <InView amount={0.25}>
             <Stagger className="mt-8 grid grid-cols-2 md:grid-cols-4" stagger={0.12}>
-              {(
-                [
-                  ["Understand", "Reads your site and confirms facts with you.", UnderstandSpot],
-                  ["Decide", "Scores channels and splits the budget.", DecideSpot],
-                  ["Experiment", "Runs tests with a cap and a deadline.", ExperimentSpot],
-                  ["Learn", "Keeps what worked, drops what didn't.", LearnSpot],
-                ] as const
-              ).map(([label, text, Spot], i) => (
+              {l.loop.map(({ label, text }, i) => {
+                const Spot = [UnderstandSpot, DecideSpot, ExperimentSpot, LearnSpot][i];
+                return (
                 <StaggerItem key={label} className="flex flex-col items-center px-4 pb-10 text-center">
                   <Spot className="w-full max-w-[280px]" />
                   <p className="-mt-2 text-lg font-medium tracking-[-0.02em]">
@@ -114,7 +112,8 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
                   </p>
                   <p className="mt-1 max-w-[16rem] text-sm text-muted">{text}</p>
                 </StaggerItem>
-              ))}
+                );
+              })}
             </Stagger>
           </InView>
         </div>
@@ -123,47 +122,55 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       {/* ───────── Pillars ───────── */}
       <div id="platform" className="scroll-mt-24 space-y-4 px-3 pt-4 sm:space-y-5 sm:px-5 sm:pt-5">
         <Pillar
+          startLabel={l.startFree}
+          connectsWith={l.connectsWith}
           id="pillar-understand"
           tone="blue"
-          tag="Understand"
-          title={["Know your product", "better than a new hire"]}
-          body="Kaya reads your pricing, docs and changelog, then writes down who buys, what they compare you with and why they switch. Every fact links to its source, and nothing drives spend until you confirm it."
+          tag={l.pillars.understand.tag}
+          title={l.pillars.understand.title as [string, string]}
+          body={l.pillars.understand.body}
           brands={["stripe", "posthog", "searchconsole"]}
-          proof={["Sources and confidence on every fact", "Ignores instructions hidden in web pages", "ICPs, competitors and wedges you can edit"]}
-          cta={{ label: "Analyze my product", href: "/start" }}
+          proof={l.pillars.understand.proof}
+          cta={{ label: l.pillars.understand.cta, href: "/start" }}
           visual={<UnderstandSpot className="w-full max-w-[460px]" />}
         />
         <Pillar
+          startLabel={l.startFree}
+          connectsWith={l.connectsWith}
           id="pillar-decide"
           tone="tangerine"
-          tag="Decide"
-          title={["Spend where money", "can actually learn"]}
-          body="Each channel gets a fit score from your audience, price point, sales motion and budget. Kaya splits the budget where a test can reach significance and keeps a reserve instead of five $40 experiments that prove nothing."
+          tag={l.pillars.decide.tag}
+          title={l.pillars.decide.title as [string, string]}
+          body={l.pillars.decide.body}
           brands={["googleads", "meta", "linkedin"]}
-          proof={["Channel fit from 0 to 100, with reasons", "Says “not yet” to channels your budget can't feed", "30, 60 and 90-day plan tied to your goal"]}
-          cta={{ label: "See a strategy", href: inDemo("/strategy") }}
+          proof={l.pillars.decide.proof}
+          cta={{ label: l.pillars.decide.cta, href: inDemo("/strategy") }}
           visual={<DecideSpot className="w-full max-w-[460px]" />}
           flip
         />
         <Pillar
+          startLabel={l.startFree}
+          connectsWith={l.connectsWith}
           id="pillar-experiment"
           tone="grass"
-          tag="Experiment"
-          title={["Run experiments,", "not campaigns"]}
-          body="A ranked queue of tests, each with a hypothesis, a success metric, a budget cap and a time to signal. Results are judged with real statistics, so an inconclusive test is called inconclusive."
+          tag={l.pillars.experiment.tag}
+          title={l.pillars.experiment.title as [string, string]}
+          body={l.pillars.experiment.body}
           brands={["googleads", "reddit", "hackernews"]}
-          proof={["Two-proportion and Poisson tests on every result", "Losing ads paused as soon as they cost too much", "Disproved tactics never come back"]}
-          cta={{ label: "Explore experiments", href: inDemo("/experiments") }}
+          proof={l.pillars.experiment.proof}
+          cta={{ label: l.pillars.experiment.cta, href: inDemo("/experiments") }}
           visual={<ExperimentSpot className="w-full max-w-[460px]" />}
         />
         <Pillar
+          startLabel={l.startFree}
+          connectsWith={l.connectsWith}
           id="control"
           tone="lilac"
-          tag="Control"
-          title={["An agent with the keys.", "You keep the safe."]}
-          body="Every action has a risk class, from reading a report to moving money. Choose how far Kaya goes on its own. Budget caps are enforced in code and checked again at the moment of execution, even after you approve."
-          proof={["Idempotent tool calls: a retry never double-spends", "Approvals explain which rule triggered", "Append-only audit log of every action"]}
-          cta={{ label: "See approvals", href: inDemo("/agent") }}
+          tag={l.pillars.control.tag}
+          title={l.pillars.control.title as [string, string]}
+          body={l.pillars.control.body}
+          proof={l.pillars.control.proof}
+          cta={{ label: l.pillars.control.cta, href: inDemo("/agent") }}
           visual={
             <div className="w-full max-w-[520px]">
               <AutonomyDial />
@@ -172,19 +179,21 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
           flip
         />
         <Pillar
+          startLabel={l.startFree}
+          connectsWith={l.connectsWith}
           id="pillar-learn"
           tone="sun"
-          tag="Learn"
-          title={["Every result makes", "next month smarter"]}
-          body="Winners become learnings that boost similar ideas. The strategy revises itself with a written reason, and a Monday brief tells you what changed, why, and the one decision that needs you."
+          tag={l.pillars.learn.tag}
+          title={l.pillars.learn.title as [string, string]}
+          body={l.pillars.learn.body}
           stats={[
-            [13, "", "experiments run"],
-            [6, "", "learnings saved"],
-            [31, "+%", "best lift"],
+            [13, "", l.pillars.learn.stats[0]],
+            [6, "", l.pillars.learn.stats[1]],
+            [31, "+%", l.pillars.learn.stats[2]],
           ]}
-          statsNote="Tickwarden demo workspace"
-          proof={["Every KPI shows its formula and inputs", "Strategy versions with evidence", "One brief a week, not twelve dashboards"]}
-          cta={{ label: "Open the demo", href: demoHref }}
+          statsNote={l.pillars.learn.statsNote}
+          proof={l.pillars.learn.proof}
+          cta={{ label: l.pillars.learn.cta, href: demoHref }}
           visual={<LearnSpot className="w-full max-w-[460px]" />}
         />
       </div>
@@ -193,8 +202,8 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       <section className="mx-auto max-w-[1360px] px-5 pt-28 sm:pt-36">
         <Reveal>
           <h2 className="text-center text-[clamp(38px,4.8vw,64px)] leading-[1] font-medium tracking-[-0.045em]">
-            Watch a growth loop run
-            <br className="hidden sm:block" /> from start to finish
+            {l.storiesLine1}
+            <br className="hidden sm:block" /> {l.storiesLine2}
           </h2>
         </Reveal>
         <Stagger className="mt-12 grid gap-4 md:grid-cols-2" stagger={0.15}>
@@ -202,11 +211,11 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
             <StoryCard
               href={demoHref}
               tone="bg-grass-soft"
-              kicker="Demo workspace"
-              title="How Tickwarden lifted trial starts 31% with one comparison page"
+              kicker={l.demoWorkspace}
+              title={l.story1}
               visual={
                 <InView className="rounded-2xl bg-surface p-5 shadow-float">
-                  <p className="font-mono text-[11px] text-subtle uppercase">EXP-014 · winner</p>
+                  <p className="font-mono text-[11px] text-subtle uppercase">{l.story1Kicker}</p>
                   <p className="mt-2 text-5xl font-medium tracking-[-0.05em]">
                     <CountUp to={31} prefix="+" suffix="%" />
                   </p>
@@ -222,18 +231,18 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
             <StoryCard
               href={inDemo("/agent")}
               tone="bg-tangerine-soft"
-              kicker="Demo workspace"
-              title="Watch the agent ask before it raises a Google Ads budget"
+              kicker={l.demoWorkspace}
+              title={l.story2}
               visual={
                 <div className="rounded-2xl bg-surface p-5 shadow-float">
                   <p className="flex items-center gap-2 font-mono text-[11px] text-subtle uppercase">
-                    <BrandIcon brand="googleads" className="size-4" /> Needs approval
+                    <BrandIcon brand="googleads" className="size-4" /> {l.needsApproval}
                   </p>
-                  <p className="mt-2 text-xl font-medium tracking-[-0.03em]">$30 → $45 per day</p>
-                  <p className="text-sm text-muted">+50% is above your +20% automatic limit</p>
+                  <p className="mt-2 text-xl font-medium tracking-[-0.03em]">{l.story2Change}</p>
+                  <p className="text-sm text-muted">{l.story2Why}</p>
                   <div className="mt-4 flex gap-2">
-                    <span className="m-pulse rounded-lg bg-ink px-3 py-1.5 text-sm text-white">Approve</span>
-                    <span className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-muted">Reject</span>
+                    <span className="m-pulse rounded-lg bg-ink px-3 py-1.5 text-sm text-white">{l.approve}</span>
+                    <span className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-muted">{l.reject}</span>
                   </div>
                 </div>
               }
@@ -244,12 +253,14 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
 
       {/* ───────── Resources ───────── */}
       <Stagger className="mx-auto grid max-w-[1360px] gap-4 px-5 pt-4 sm:grid-cols-2 lg:grid-cols-4" stagger={0.1}>
-        {[
-          ["/start", "bg-lime", "Get started", "Paste your URL and get a strategy in two minutes", "Start free"],
-          [demoHref, "bg-blue-soft", "Demo", "Explore a full workspace with 104 days of data", "Open demo"],
-          ["/pricing", "bg-lilac-soft", "Pricing", "Start free, pay for what the agent does", "See plans"],
-          ["/brand", "bg-cream", "Brand", "The Kaya identity: logo, palette, type and clay", "View brand"],
-        ].map(([href, tone, kicker, title, cta]) => (
+        {(
+          [
+            ["/start", "bg-lime"],
+            [demoHref, "bg-blue-soft"],
+            ["/pricing", "bg-lilac-soft"],
+            ["/brand", "bg-cream"],
+          ] as const
+        ).map(([href, tone], i) => ({ href, tone, ...l.resources[i] })).map(({ href, tone, kicker, title, cta }) => (
           <StaggerItem key={kicker}>
             <Link href={href} className={cn("group flex min-h-[220px] flex-col justify-between rounded-[24px] p-6 transition-transform duration-300 hover:-translate-y-1", tone)}>
               <div>
@@ -268,13 +279,13 @@ export function LandingPage({ hero, links, overlapStack = false }: { hero: React
       <section id="faq" className="mx-auto grid max-w-[1360px] scroll-mt-24 gap-10 px-5 pt-28 sm:pt-36 lg:grid-cols-[0.8fr_1.2fr]">
         <Reveal>
           <h2 className="text-[clamp(38px,4.4vw,60px)] leading-[1] font-medium tracking-[-0.045em]">
-            Questions,
+            {l.faqLine1}
             <br />
-            answered
+            {l.faqLine2}
           </h2>
         </Reveal>
         <Reveal delay={0.1}>
-          <Faq />
+          <Faq questions={l.faq} />
         </Reveal>
       </section>
 
@@ -305,6 +316,8 @@ function Pillar({
   cta,
   visual,
   flip = false,
+  startLabel,
+  connectsWith,
 }: {
   id: string;
   tone: keyof typeof TONES;
@@ -318,6 +331,8 @@ function Pillar({
   cta: { label: string; href: string };
   visual: ReactNode;
   flip?: boolean;
+  startLabel: string;
+  connectsWith: string;
 }) {
   const t = TONES[tone];
   return (
@@ -349,7 +364,7 @@ function Pillar({
                   <BrandIcon brand={b} className="size-[18px]" />
                 </span>
               ))}
-              <span className="ml-1 text-sm text-muted">Connects with {brands.map((b) => BRANDS[b].title).join(", ")}</span>
+              <span className="ml-1 text-sm text-muted">{fmt(connectsWith, { brands: brands.map((b) => BRANDS[b].title).join(", ") })}</span>
             </StaggerItem>
           )}
           {stats && (
@@ -381,7 +396,7 @@ function Pillar({
 
           <StaggerItem className="mt-8 flex flex-wrap gap-2">
             <Link href="/start" className={button.black}>
-              Start free <ArrowRight className="size-4" />
+              {startLabel} <ArrowRight className="size-4" />
             </Link>
             <Link href={cta.href} className={button.white}>
               {cta.label}

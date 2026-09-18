@@ -4,9 +4,12 @@ import { Badge, ChannelBadge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/cn";
 import { experimentKey, formatUsd } from "@/lib/format";
-import { channelLabel, CHANNELS, isChannel } from "@/server/domain/channels";
+import { CHANNELS, isChannel } from "@/server/domain/channels";
 import type { ChannelFactors, StrategyContent } from "@/server/domain/types";
-import { metricLabel, thresholdLabel } from "./experiment-bits";
+import { metricLabel, thresholdLabel } from "./experiment-format";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
 
 export interface ChannelAssessmentView {
   channel: string;
@@ -31,18 +34,11 @@ export interface StrategyExperimentView {
   suppressedReason: string | null;
 }
 
-const FACTOR_LABEL: [keyof ChannelFactors, string][] = [
-  ["audiencePresence", "Audience presence"],
-  ["purchaseIntent", "Purchase intent"],
-  ["cacFit", "CAC fit"],
-  ["budgetFit", "Budget fit"],
-  ["creativeEase", "Creative ease"],
-  ["organicPotential", "Organic potential"],
-  ["currentTraction", "Current traction"],
-];
+const FACTORS: (keyof ChannelFactors & keyof Dictionary["app"]["strategy"]["factors"])[] = ["audiencePresence", "purchaseIntent", "cacFit", "budgetFit", "creativeEase", "organicPotential", "currentTraction"];
+
 
 /** The strategy as a structured, living object. Used in onboarding (animated reveal) and on the Strategy page. */
-export function StrategySections({
+export async function StrategySections({
   slug,
   content,
   channels,
@@ -55,6 +51,9 @@ export function StrategySections({
   experiments: StrategyExperimentView[];
   animate?: boolean;
 }) {
+  const { t, locale } = await getI18n();
+  const st = t.app.strategy;
+  const usd = (v: number) => formatUsd(v, {}, locale);
   let order = 0;
   const reveal = (): { className?: string; style?: CSSProperties } =>
     animate ? { className: "animate-rise", style: { animationDelay: `${order++ * 110}ms` } } : {};
@@ -67,7 +66,7 @@ export function StrategySections({
   return (
     <div className="space-y-4">
       <Section {...reveal()} className={cn("p-5", reveal().className)}>
-        <Label>Objective</Label>
+        <Label>{st.objective}</Label>
         <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{content.objective}</p>
         <p className="mt-2 max-w-3xl text-base text-ink/80">{content.situation}</p>
         {content.baseline.length > 0 && (
@@ -84,24 +83,24 @@ export function StrategySections({
 
       <div className="grid gap-4 lg:grid-cols-2" {...(animate ? { style: { animationDelay: `${order * 110}ms` } } : {})}>
         <Section {...reveal()} className={cn("border-l-2 border-l-agent p-5", animate && "animate-rise")}>
-          <Label tone="agent">Biggest growth bottleneck</Label>
+          <Label tone="agent">{st.bottleneck}</Label>
           <p className="mt-1 text-lg font-semibold text-ink">{content.bottleneck.title}</p>
           <p className="mt-1.5 text-sm text-muted">{content.bottleneck.detail}</p>
         </Section>
         <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-          <Label>Positioning</Label>
+          <Label>{st.positioning}</Label>
           <p className="mt-1 text-base font-medium text-ink">{content.positioning.statement}</p>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-            <Kv k="For">{content.positioning.forWho}</Kv>
-            <Kv k="Instead of">{content.positioning.insteadOf}</Kv>
-            <Kv k="Because">{content.positioning.because}</Kv>
+            <Kv k={st.for}>{content.positioning.forWho}</Kv>
+            <Kv k={st.insteadOf}>{content.positioning.insteadOf}</Kv>
+            <Kv k={st.because}>{content.positioning.because}</Kv>
           </dl>
         </Section>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-          <Label>Priority customers</Label>
+          <Label>{st.priorityCustomers}</Label>
           <ol className="mt-2 space-y-3">
             {content.icpPriorities.map((i, idx) => (
               <li key={i.name} className="grid grid-cols-[18px_minmax(0,1fr)] gap-2">
@@ -112,11 +111,11 @@ export function StrategySections({
                 </div>
               </li>
             ))}
-            {content.icpPriorities.length === 0 && <p className="text-sm text-subtle">Confirm an audience to prioritize.</p>}
+            {content.icpPriorities.length === 0 && <p className="text-sm text-subtle">{st.confirmAudience}</p>}
           </ol>
         </Section>
         <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-          <Label>Messaging pillars</Label>
+          <Label>{st.messaging}</Label>
           <ul className="mt-2 space-y-3">
             {content.messagingPillars.map((m) => (
               <li key={m.pillar}>
@@ -124,11 +123,11 @@ export function StrategySections({
                 <p className="text-xs text-muted">{m.proof}</p>
               </li>
             ))}
-            {content.messagingPillars.length === 0 && <p className="text-sm text-subtle">Confirm features to build messaging from them.</p>}
+            {content.messagingPillars.length === 0 && <p className="text-sm text-subtle">{st.confirmFeatures}</p>}
           </ul>
         </Section>
         <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-          <Label>How to win against</Label>
+          <Label>{st.winAgainst}</Label>
           <ul className="mt-2 space-y-3">
             {content.competitorWedges.map((c) => (
               <li key={c.competitor}>
@@ -136,7 +135,7 @@ export function StrategySections({
                 <p className="text-xs text-muted">{c.wedge}</p>
               </li>
             ))}
-            {content.competitorWedges.length === 0 && <p className="text-sm text-subtle">No confirmed competitors yet.</p>}
+            {content.competitorWedges.length === 0 && <p className="text-sm text-subtle">{st.noCompetitors}</p>}
           </ul>
         </Section>
       </div>
@@ -144,21 +143,21 @@ export function StrategySections({
       <Section {...reveal()} className={cn("overflow-hidden", animate && "animate-rise")}>
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
           <div className="p-5">
-            <Label>Channel fit</Label>
-            <p className="mt-0.5 text-xs text-muted">0–100 from audience presence, intent, CAC fit against your price, budget, creative burden, organic potential, traction and past experiments.</p>
+            <Label>{st.channelFit}</Label>
+            <p className="mt-0.5 text-xs text-muted">{st.channelFitHint}</p>
             <ul className="mt-3 divide-y divide-line">
               {focus.map((c) => (
-                <ChannelRow key={c.channel} c={c} />
+                <ChannelRow key={c.channel} c={c} st={st} />
               ))}
             </ul>
           </div>
           <div className="border-t border-line bg-raised p-5 lg:border-t-0 lg:border-l">
-            <Label tone="negative">Don&apos;t use right now</Label>
+            <Label tone="negative">{st.dontUse}</Label>
             <ul className="mt-3 divide-y divide-line">
               {avoid.map((c) => (
-                <ChannelRow key={c.channel} c={c} />
+                <ChannelRow key={c.channel} c={c} st={st} />
               ))}
-              {avoid.length === 0 && <p className="text-sm text-subtle">Every channel is worth at least a small test.</p>}
+              {avoid.length === 0 && <p className="text-sm text-subtle">{st.everyWorth}</p>}
             </ul>
           </div>
         </div>
@@ -166,10 +165,10 @@ export function StrategySections({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-          <Label>Budget allocation</Label>
+          <Label>{st.budget}</Label>
           <p className="mt-1 text-lg font-semibold text-ink tabular">
-            {content.budget.monthly > 0 ? `${formatUsd(content.budget.monthly)}/month` : "Organic only"}
-            {content.budget.monthly > 0 && <span className="ml-2 text-xs font-normal text-muted">{Math.round(content.budget.paidShare * 100)}% paid</span>}
+            {content.budget.monthly > 0 ? fmt(st.perMonth, { amount: usd(content.budget.monthly) }) : st.organicOnly}
+            {content.budget.monthly > 0 && <span className="ml-2 text-xs font-normal text-muted">{fmt(st.paidShare, { pct: Math.round(content.budget.paidShare * 100) })}</span>}
           </p>
           {totalBudget > 0 ? (
             <>
@@ -183,38 +182,38 @@ export function StrategySections({
                   <li key={a.channel} className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-start gap-2.5">
                     <span className={cn("mt-1.5 size-2 rounded-full", ["bg-ink", "bg-muted", "bg-subtle", "bg-line-strong"][i % 4])} aria-hidden />
                     <div className="min-w-0">
-                      <p className="text-sm text-ink">{channelLabel(a.channel)}</p>
+                      <p className="text-sm text-ink">{t.common.channels[a.channel] ?? a.channel}</p>
                       <p className="text-xs text-muted">{a.purpose}</p>
                     </div>
-                    <span className="text-sm font-medium tabular">{formatUsd(a.amount)}</span>
+                    <span className="text-sm font-medium tabular">{usd(a.amount)}</span>
                   </li>
                 ))}
               </ul>
               {content.budget.monthly - totalBudget > 0 && (
                 <p className="mt-3 border-t border-line pt-2.5 text-xs text-muted">
-                  <span className="font-medium text-ink tabular">{formatUsd(content.budget.monthly - totalBudget)}</span> kept in reserve: no remaining channel can use it well yet. It moves to the first experiment that beats its threshold.
+                  <span className="font-medium text-ink tabular">{usd(content.budget.monthly - totalBudget)}</span> {st.reserve}
                 </p>
               )}
             </>
           ) : (
-            <p className="mt-2 text-sm text-muted">No paid channel can produce a readable signal at this budget, so the plan relies on organic experiments. Hard limit: the agent cannot spend.</p>
+            <p className="mt-2 text-sm text-muted">{st.noPaid}</p>
           )}
         </Section>
 
         <Section {...reveal()} className={cn("overflow-hidden", animate && "animate-rise")}>
           <div className="px-5 pt-5">
-            <Label>First experiments</Label>
-            <p className="mt-0.5 text-xs text-muted">Each one has a hypothesis, a metric and a threshold. Nothing launches without your approval.</p>
+            <Label>{st.firstExperiments}</Label>
+            <p className="mt-0.5 text-xs text-muted">{st.firstExperimentsHint}</p>
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-y border-line text-left text-2xs text-subtle">
-                  <th className="px-5 py-2 font-medium">Experiment</th>
-                  <th className="px-3 py-2 font-medium">Success if</th>
-                  <th className="px-3 py-2 text-right font-medium">Cost</th>
-                  <th className="px-3 py-2 font-medium">Info gain</th>
-                  <th className="px-5 py-2 text-right font-medium">Signal</th>
+                  <th className="px-5 py-2 font-medium">{t.app.common.experiment}</th>
+                  <th className="px-3 py-2 font-medium">{st.successIf}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t.app.experiments.cost}</th>
+                  <th className="px-3 py-2 font-medium">{st.infoGain}</th>
+                  <th className="px-5 py-2 text-right font-medium">{st.signal}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -228,22 +227,22 @@ export function StrategySections({
                         <span className="tabular">{experimentKey(e.number)}</span>
                         <ChannelBadge channel={e.channel} />
                       </div>
-                      {e.suppressedReason && <p className="mt-0.5 text-2xs text-negative">Suppressed: {e.suppressedReason}</p>}
+                      {e.suppressedReason && <p className="mt-0.5 text-2xs text-negative">{fmt(st.suppressed, { reason: e.suppressedReason })}</p>}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted">
-                      {metricLabel(e.primaryMetric)} {thresholdLabel(e.primaryMetric, e.successThreshold)}
+                      {metricLabel(e.primaryMetric, t)} {thresholdLabel(e.primaryMetric, e.successThreshold, t, locale)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-xs tabular">{e.budget > 0 ? formatUsd(e.budget) : "Organic"}</td>
+                    <td className="px-3 py-2.5 text-right text-xs tabular">{e.budget > 0 ? usd(e.budget) : t.app.common.organic}</td>
                     <td className="px-3 py-2.5">
-                      <Dots n={e.informationGain} />
+                      <Dots n={e.informationGain} label={fmt(t.app.metrics.infoGain, { n: e.informationGain })} />
                     </td>
-                    <td className="px-5 py-2.5 text-right text-xs tabular">{e.timeToSignalDays}d</td>
+                    <td className="px-5 py-2.5 text-right text-xs tabular">{fmt(t.app.common.days, { count: e.timeToSignalDays })}</td>
                   </tr>
                 ))}
                 {queued.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-4 text-sm text-subtle">
-                      No experiment fits the current goal and budget.
+                      {st.noExperiment}
                     </td>
                   </tr>
                 )}
@@ -254,13 +253,13 @@ export function StrategySections({
       </div>
 
       <Section {...reveal()} className={cn("p-5", animate && "animate-rise")}>
-        <Label>Plan</Label>
+        <Label>{st.plan}</Label>
         <div className="mt-3 grid gap-5 md:grid-cols-3">
           {(
             [
-              ["Next 30 days", content.plan.days30],
-              ["Days 31–60", content.plan.days60],
-              ["Days 61–90", content.plan.days90],
+              [st.next30, content.plan.days30],
+              [st.days60, content.plan.days60],
+              [st.days90, content.plan.days90],
             ] as const
           ).map(([title, items]) => (
             <div key={title}>
@@ -279,15 +278,15 @@ export function StrategySections({
 
       <Section {...reveal()} className={cn("overflow-hidden", animate && "animate-rise")}>
         <div className="px-5 pt-5">
-          <Label>Assumptions to validate</Label>
+          <Label>{st.assumptions}</Label>
         </div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-y border-line text-left text-2xs text-subtle">
-                <th className="px-5 py-2 font-medium">Assumption</th>
-                <th className="px-3 py-2 font-medium">Confidence</th>
-                <th className="px-5 py-2 font-medium">How we&apos;ll know</th>
+                <th className="px-5 py-2 font-medium">{st.assumption}</th>
+                <th className="px-3 py-2 font-medium">{t.app.common.confidence}</th>
+                <th className="px-5 py-2 font-medium">{st.howToKnow}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -306,7 +305,7 @@ export function StrategySections({
   );
 }
 
-function ChannelRow({ c }: { c: ChannelAssessmentView }) {
+function ChannelRow({ c, st }: { c: ChannelAssessmentView; st: Dictionary["app"]["strategy"] }) {
   const tone = c.verdict === "prioritize" ? "positive" : c.verdict === "avoid" ? "negative" : "neutral";
   const kind = isChannel(c.channel) ? CHANNELS[c.channel].kind : "";
   return (
@@ -316,8 +315,8 @@ function ChannelRow({ c }: { c: ChannelAssessmentView }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <ChannelBadge channel={c.channel} className="text-sm text-ink" />
-              <Badge tone={tone}>{c.verdict === "prioritize" ? "Focus" : c.verdict === "avoid" ? "Avoid" : "Test"}</Badge>
-              <span className="text-2xs text-subtle">{kind}</span>
+              <Badge tone={tone}>{st.verdict[c.verdict] ?? st.verdict.test}</Badge>
+              <span className="text-2xs text-subtle">{st.kinds[kind] ?? kind}</span>
             </div>
             <p className="mt-1 text-xs text-muted">{c.rationale}</p>
           </div>
@@ -329,17 +328,17 @@ function ChannelRow({ c }: { c: ChannelAssessmentView }) {
           </span>
         </summary>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 rounded-md bg-surface p-2.5 text-2xs sm:grid-cols-4">
-          {FACTOR_LABEL.map(([key, label]) => (
+          {FACTORS.map((key) => (
             <span key={key} className="flex justify-between gap-2 text-muted">
-              {label} <span className="text-ink tabular">{c.factors[key]}</span>
+              {st.factors[key]} <span className="text-ink tabular">{c.factors[key]}</span>
             </span>
           ))}
           <span className="flex justify-between gap-2 text-muted">
-            Expected CAC <span className="text-ink tabular">${c.factors.expectedCac}</span>
+            {st.expectedCac} <span className="text-ink tabular">${c.factors.expectedCac}</span>
           </span>
           {c.factors.evidenceAdjustment !== 0 && (
             <span className="col-span-full text-muted">
-              Evidence adjustment <span className={c.factors.evidenceAdjustment > 0 ? "text-positive" : "text-negative"}>{c.factors.evidenceAdjustment > 0 ? "+" : ""}{c.factors.evidenceAdjustment}</span>
+              {st.evidenceAdjustment} <span className={c.factors.evidenceAdjustment > 0 ? "text-positive" : "text-negative"}>{c.factors.evidenceAdjustment > 0 ? "+" : ""}{c.factors.evidenceAdjustment}</span>
               {c.evidence[0] ? ` · ${c.evidence.join("; ")}` : ""}
             </span>
           )}
@@ -372,9 +371,9 @@ function Kv({ k, children }: { k: string; children: ReactNode }) {
   );
 }
 
-function Dots({ n }: { n: number }) {
+function Dots({ n, label }: { n: number; label: string }) {
   return (
-    <span className="inline-flex gap-0.5" aria-label={`Information gain ${n} of 5`}>
+    <span className="inline-flex gap-0.5" aria-label={label}>
       {Array.from({ length: 5 }, (_, i) => (
         <span key={i} className={cn("size-1.5 rounded-full", i < n ? "bg-agent" : "bg-line")} />
       ))}

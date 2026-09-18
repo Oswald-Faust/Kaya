@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { getI18n } from "@/i18n/server";
+import { fmt, plural } from "@/i18n/format";
 import type { LoopStage, ShellData } from "@/server/services/workspace";
 
 /**
@@ -7,20 +9,22 @@ import type { LoopStage, ShellData } from "@/server/services/workspace";
  * rail. Each stage shows real state and links to the surface that owns it;
  * the stage that needs the founder is marked.
  */
-export function GrowthLoop({ slug, data }: { slug: string; data: ShellData }) {
+export async function GrowthLoop({ slug, data }: { slug: string; data: ShellData }) {
+  const { t, locale } = await getI18n();
+  const l = t.shell.loop;
   const base = `/w/${slug}`;
   const c = data.counts;
   const stages: { id: LoopStage; label: string; value: string; href: string }[] = [
-    { id: "understand", label: "Understand", value: c.proposedFacts ? `${c.proposedFacts} to review` : `${c.confirmedFacts} facts`, href: `${base}/memory` },
-    { id: "decide", label: "Decide", value: c.strategyVersion ? `Strategy v${c.strategyVersion}` : "No strategy", href: `${base}/strategy` },
-    { id: "experiment", label: "Experiment", value: `${c.queued} queued`, href: `${base}/experiments` },
-    { id: "execute", label: "Execute", value: c.pendingApprovals ? `${c.pendingApprovals} need approval` : `${c.running} running`, href: `${base}/agent` },
-    { id: "measure", label: "Measure", value: data.asOf ? "Revenue connected" : "No data yet", href: `${base}/analytics` },
-    { id: "learn", label: "Learn", value: `${c.learnings} learnings`, href: `${base}/learnings` },
+    { id: "understand", label: l.understand, value: c.proposedFacts ? fmt(l.toReview, { count: c.proposedFacts }) : plural(locale, c.confirmedFacts, l.facts), href: `${base}/memory` },
+    { id: "decide", label: l.decide, value: c.strategyVersion ? fmt(l.strategyVersion, { version: c.strategyVersion }) : l.noStrategy, href: `${base}/strategy` },
+    { id: "experiment", label: l.experiment, value: fmt(l.queued, { count: c.queued }), href: `${base}/experiments` },
+    { id: "execute", label: l.execute, value: c.pendingApprovals ? plural(locale, c.pendingApprovals, l.needApproval) : fmt(l.running, { count: c.running }), href: `${base}/agent` },
+    { id: "measure", label: l.measure, value: data.asOf ? l.revenueConnected : l.noData, href: `${base}/analytics` },
+    { id: "learn", label: l.learn, value: plural(locale, c.learnings, l.learnings), href: `${base}/learnings` },
   ];
 
   return (
-    <ol aria-label="Growth loop" className="flex min-w-0 items-stretch overflow-x-auto">
+    <ol aria-label={l.label} className="flex min-w-0 items-stretch overflow-x-auto">
       {stages.map((s, i) => {
         const attention = data.attention === s.id;
         return (
@@ -45,7 +49,7 @@ export function GrowthLoop({ slug, data }: { slug: string; data: ShellData }) {
           </li>
         );
       })}
-      <li aria-hidden className="flex items-center pl-1 text-subtle" title="The loop repeats">
+      <li aria-hidden className="flex items-center pl-1 text-subtle" title={l.repeats}>
         ↺
       </li>
     </ol>

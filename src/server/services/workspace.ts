@@ -1,10 +1,13 @@
 import "server-only";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { cache } from "react";
+import { getLocale } from "@/i18n/server";
 import type { WorkspaceContext } from "@/server/context";
 import { db } from "@/server/db/client";
 import { approvals, businessFacts, experiments, goals, learnings, products, strategies } from "@/server/db/schema";
 import { goalProgress } from "@/server/domain/analytics/metrics";
+import { localizedGoalTitle } from "@/server/domain/strategy/goals";
+import { backfillFromLastSync } from "./live-metrics";
 import { getBlendedRows, latestMetricDay, shiftDay } from "./metrics";
 
 export const getPrimaryProduct = cache(async (workspaceId: string) => {
@@ -24,6 +27,8 @@ export interface ShellData {
   product: NonNullable<Awaited<ReturnType<typeof getPrimaryProduct>>> | null;
   goal: {
     title: string;
+    /** The title in the viewer's language; `title` stays as stored (English prompts use it). */
+    displayTitle: string;
     current: number;
     target: number;
     unit: string;
@@ -51,6 +56,8 @@ export interface ShellData {
 /** Everything the app chrome needs: goal, growth-loop counters and what needs attention. */
 export const getShellData = cache(async (ctx: WorkspaceContext): Promise<ShellData> => {
   const product = await getPrimaryProduct(ctx.workspaceId);
+  // A connection synced before metrics were recorded still has its payload: replay it once.
+  if (product && !(await latestMetricDay(ctx.workspaceId, product.id))) await backfillFromLastSync(ctx.workspaceId).catch(() => 0);
   const empty: ShellData = {
     product: product ?? null,
     goal: null,
@@ -112,6 +119,7 @@ export const getShellData = cache(async (ctx: WorkspaceContext): Promise<ShellDa
     });
     goalView = {
       title: goal.title,
+      displayTitle: localizedGoalTitle(goal, await getLocale()),
       current,
       target: goal.targetValue,
       unit: goal.unit,

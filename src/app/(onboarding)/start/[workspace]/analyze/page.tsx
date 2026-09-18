@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
 import { redirect } from "next/navigation";
 import { AnalysisLive } from "@/components/onboarding/analysis-live";
 import { OnboardingSteps } from "@/components/onboarding/steps";
@@ -7,7 +9,10 @@ import { getRun } from "@/server/services/agent-runs";
 import { latestRun } from "@/server/services/onboarding";
 import { getPrimaryProduct } from "@/server/services/workspace";
 
-export const metadata = { title: "Analyzing your product" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.onboarding.analyze.metaTitle };
+}
 
 export default async function AnalyzePage({ params }: PageProps<"/start/[workspace]/analyze">) {
   const { workspace } = await params;

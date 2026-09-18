@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ReviewBoard } from "@/components/onboarding/review-board";
@@ -7,7 +10,10 @@ import { db } from "@/server/db/client";
 import * as t from "@/server/db/schema";
 import { getPrimaryProduct } from "@/server/services/workspace";
 
-export const metadata = { title: "Confirm what we learned" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t: dict } = await getI18n();
+  return { title: dict.onboarding.confirm.metaTitle };
+}
 
 export default async function ConfirmPage({ params }: PageProps<"/start/[workspace]/confirm">) {
   const { workspace } = await params;
@@ -15,6 +21,8 @@ export default async function ConfirmPage({ params }: PageProps<"/start/[workspa
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) redirect("/start");
   if (product.status === "analyzing") redirect(`/start/${ctx.workspaceSlug}/analyze`);
+  const { t: dict } = await getI18n();
+  const c = dict.onboarding.confirm;
 
   const [facts, icps, competitors, snapshot] = await Promise.all([
     db
@@ -31,10 +39,10 @@ export default async function ConfirmPage({ params }: PageProps<"/start/[workspa
     <main className="mx-auto max-w-[920px] px-5 pb-32">
       <OnboardingSteps slug={ctx.workspaceSlug} current="confirm" reached={product.onboardingStep} />
       <div className="mt-8">
-        <p className="text-xs text-muted">Business memory</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Here&apos;s what we learned about {product.name}</h1>
+        <p className="text-xs text-muted">{c.eyebrow}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{fmt(c.title, { name: product.name })}</h1>
         <p className="mt-1.5 max-w-2xl text-base text-muted">
-          Confirm what&apos;s right and fix what isn&apos;t. Only confirmed facts drive strategy and spend; everything keeps its source so you can check it later.
+          {c.lead}
         </p>
       </div>
       <ReviewBoard

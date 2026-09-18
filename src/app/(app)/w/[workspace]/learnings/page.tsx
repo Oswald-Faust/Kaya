@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
+import { translateDomainText } from "@/i18n/domain-text";
 import Link from "next/link";
 import { Badge, ChannelBadge, ConfidenceBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,12 +13,15 @@ import { rankQueue } from "@/server/services/experiments";
 import { listLearnings } from "@/server/services/learnings";
 import { getPrimaryProduct } from "@/server/services/workspace";
 
-export const metadata = { title: "Learnings" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.app.learnings.metaTitle };
+}
 
 const GROUPS = [
-  { kind: "winner", title: "What works", tone: "positive" as const, label: "Winner" },
-  { kind: "loser", title: "What doesn't", tone: "negative" as const, label: "Loser" },
-  { kind: "insight", title: "What we've noticed", tone: "neutral" as const, label: "Learning" },
+  { kind: "winner", tone: "positive" as const, label: "winner" as const },
+  { kind: "loser", tone: "negative" as const, label: "loser" as const },
+  { kind: "insight", tone: "neutral" as const, label: "learning" as const },
 ];
 
 export default async function LearningsPage({ params }: PageProps<"/w/[workspace]/learnings">) {
@@ -22,7 +29,9 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
   const ctx = await requireWorkspace(workspace);
   const product = await getPrimaryProduct(ctx.workspaceId);
   const base = `/w/${ctx.workspaceSlug}`;
-  if (!product) return <EmptyState title="No product yet" className="mx-auto max-w-3xl" />;
+  const { t, locale } = await getI18n();
+  const lt = t.app.learnings;
+  if (!product) return <EmptyState title={t.app.common.noProduct} className="mx-auto max-w-3xl" />;
 
   const [learnings, ranked] = await Promise.all([listLearnings(ctx.workspaceId, product.id), rankQueue(ctx.workspaceId, product.id)]);
 
@@ -45,13 +54,13 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
   return (
     <div className="mx-auto max-w-[1100px] space-y-6 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
-        title="Learnings"
-        description={`Things Kaya has learned about ${product.name}, each tied to the experiment that proved it and to the recommendations it changes.`}
+        title={lt.title}
+        description={fmt(lt.description, { name: product.name })}
       />
 
       {learnings.length === 0 ? (
         <Panel>
-          <EmptyState title="Nothing learned yet" description="Every completed experiment writes a learning here: winner, loser or inconclusive. The next recommendations use it." />
+          <EmptyState title={lt.emptyTitle} description={lt.emptyHint} />
         </Panel>
       ) : (
         GROUPS.map((group) => {
@@ -60,7 +69,7 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
           return (
             <section key={group.kind} aria-labelledby={`group-${group.kind}`}>
               <h2 id={`group-${group.kind}`} className="mb-2 text-sm font-semibold text-ink">
-                {group.title} <span className="font-normal text-subtle tabular">{items.length}</span>
+                {lt.groups[group.kind]} <span className="font-normal text-subtle tabular">{items.length}</span>
               </h2>
               <ul className="space-y-2.5">
                 {items.map((l) => {
@@ -69,17 +78,17 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
                     <li key={l.id}>
                       <Panel as="article" className="p-4">
                         <div className="flex flex-wrap items-center gap-2 text-2xs text-muted">
-                          <Badge tone={group.tone}>{group.label}</Badge>
+                          <Badge tone={group.tone}>{t.app.common[group.label]}</Badge>
                           {l.channel && <ChannelBadge channel={l.channel} />}
-                          <Badge tone="outline">{l.impact} impact</Badge>
+                          <Badge tone="outline">{fmt(t.app.common.impactLabel, { impact: lt.impact[l.impact] ?? l.impact })}</Badge>
                           <ConfidenceBadge value={l.confidence} />
-                          <span className="ml-auto">{formatDate(l.createdAt, { month: "short", day: "numeric", year: "numeric" })}</span>
+                          <span className="ml-auto">{formatDate(l.createdAt, { month: "short", day: "numeric", year: "numeric" }, locale)}</span>
                         </div>
                         <p className="mt-2 text-base font-medium text-ink">{l.statement}</p>
-                        {l.metricLabel && <p className="mt-1 text-sm text-muted">{l.metricLabel}</p>}
+                        {l.metricLabel && <p className="mt-1 text-sm text-muted">{translateDomainText(l.metricLabel, locale)}</p>}
                         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-2.5 text-xs">
                           <span className="text-muted">
-                            Evidence:{" "}
+                            {lt.evidence}{" "}
                             {l.evidence.length ? (
                               l.evidence.map((e) => (
                                 <Link key={e.id} href={`${base}/experiments/${e.number}`} className="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">
@@ -87,11 +96,11 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
                                 </Link>
                               ))
                             ) : (
-                              <span className="text-ink">metrics, not a single experiment</span>
+                              <span className="text-ink">{lt.metricsOnly}</span>
                             )}
                           </span>
-                          {inf?.suppressed.length ? <span className="text-negative">Stops re-testing: {inf.suppressed.join(", ")}</span> : null}
-                          {inf?.boosted.length ? <span className="text-positive">Raises confidence in: {inf.boosted.join(", ")}</span> : null}
+                          {inf?.suppressed.length ? <span className="text-negative">{fmt(lt.stops, { list: inf.suppressed.join(", ") })}</span> : null}
+                          {inf?.boosted.length ? <span className="text-positive">{fmt(lt.raises, { list: inf.boosted.join(", ") })}</span> : null}
                         </div>
                       </Panel>
                     </li>

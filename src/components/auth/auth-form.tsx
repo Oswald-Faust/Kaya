@@ -7,6 +7,8 @@ import { ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import { loginAction, signupAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Spinner } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 
 function GoogleG() {
   return (
@@ -21,6 +23,7 @@ function GoogleG() {
 
 function Field({ label, name, type = "text", autoComplete, placeholder, hint }: { label: string; name: string; type?: string; autoComplete?: string; placeholder?: string; hint?: string }) {
   const id = useId();
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
   return (
@@ -45,7 +48,7 @@ function Field({ label, name, type = "text", autoComplete, placeholder, hint }: 
           <button
             type="button"
             onClick={() => setVisible((v) => !v)}
-            aria-label={visible ? "Hide password" : "Show password"}
+            aria-label={visible ? t.auth.hidePassword : t.auth.showPassword}
             className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-subtle hover:bg-sunken hover:text-ink"
           >
             {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -59,6 +62,7 @@ function Field({ label, name, type = "text", autoComplete, placeholder, hint }: 
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
+  const { t } = useI18n();
   return (
     <button
       type="submit"
@@ -66,13 +70,15 @@ function Submit({ label }: { label: string }) {
       className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[15px] font-medium text-white transition-colors hover:bg-ink-hover disabled:opacity-70"
     >
       {pending ? <Spinner /> : null}
-      {pending ? "One moment…" : label}
+      {pending ? t.auth.oneMoment : label}
       {!pending && <ArrowRight className="size-4" />}
     </button>
   );
 }
 
 export function AuthForm({ mode, next, googleEnabled, product, notice }: { mode: "login" | "signup"; next?: string; googleEnabled: boolean; product?: string; notice?: string }) {
+  const { t } = useI18n();
+  const a = t.auth;
   const [state, action] = useActionState<AuthFormState, FormData>(mode === "login" ? loginAction : signupAction, { error: null });
   const query = next ? `?next=${encodeURIComponent(next)}${product ? `&product=${encodeURIComponent(product)}` : ""}` : "";
   const error = state.error ?? notice ?? null;
@@ -81,21 +87,21 @@ export function AuthForm({ mode, next, googleEnabled, product, notice }: { mode:
     <div>
       {product && (
         <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-lime-soft px-3 py-1.5 text-sm text-lime-deep">
-          <Sparkles className="size-3.5" /> Your {product} analysis is ready. Save it to continue.
+          <Sparkles className="size-3.5" /> {fmt(a.analysisReady, { product })}
         </p>
       )}
       <h1 className="text-[clamp(34px,3.4vw,46px)] leading-[1.05] font-medium tracking-[-0.04em] text-ink">
         {mode === "login" ? (
           <>
-            Welcome back.
+            {a.loginHeadline1}
             <br />
-            Log in to your account.
+            {a.loginHeadline2}
           </>
         ) : (
           <>
-            Create your account.
+            {a.signupHeadline1}
             <br />
-            <span className="text-muted">Start growing in minutes.</span>
+            <span className="text-muted">{a.signupHeadline2}</span>
           </>
         )}
       </h1>
@@ -107,11 +113,11 @@ export function AuthForm({ mode, next, googleEnabled, product, notice }: { mode:
             className="mt-10 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-surface text-[15px] font-medium text-ink transition-colors hover:bg-raised"
           >
             <GoogleG />
-            {mode === "login" ? "Sign in with Google" : "Sign up with Google"}
+            {mode === "login" ? a.googleLogin : a.googleSignup}
           </a>
           <div className="my-6 flex items-center gap-3 text-xs text-subtle">
             <span className="h-px flex-1 bg-line" />
-            or with email
+            {a.orEmail}
             <span className="h-px flex-1 bg-line" />
           </div>
         </>
@@ -119,36 +125,36 @@ export function AuthForm({ mode, next, googleEnabled, product, notice }: { mode:
 
       <form action={action} className={cn("space-y-4", !googleEnabled && "mt-10")}>
         <input type="hidden" name="next" value={next ?? ""} />
-        {mode === "signup" && <Field label="Full name" name="name" autoComplete="name" placeholder="Ada Lovelace" />}
-        <Field label="Work email" name="email" type="email" autoComplete="email" placeholder="name@company.com" />
+        {mode === "signup" && <Field label={a.fullName} name="name" autoComplete="name" placeholder={a.namePlaceholder} />}
+        <Field label={a.workEmail} name="email" type="email" autoComplete="email" placeholder={a.emailPlaceholder} />
         <Field
-          label="Password"
+          label={a.password}
           name="password"
           type="password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
-          placeholder={mode === "login" ? "Your password" : "At least 8 characters"}
+          placeholder={mode === "login" ? a.passwordLogin : a.passwordSignup}
         />
         {error && (
           <p role="alert" className="rounded-xl bg-negative-soft px-3 py-2.5 text-sm text-negative">
             {error}
           </p>
         )}
-        <Submit label={mode === "login" ? "Log in" : "Create account"} />
+        <Submit label={mode === "login" ? a.logIn : a.createAccount} />
       </form>
 
       <p className="mt-6 text-center text-[15px] text-muted">
         {mode === "login" ? (
           <>
-            New to Kaya?{" "}
+            {a.newToKaya}{" "}
             <Link href={`/signup${query}`} className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
-              Create an account
+              {a.createAnAccount}
             </Link>
           </>
         ) : (
           <>
-            Already have an account?{" "}
+            {a.haveAccount}{" "}
             <Link href={`/login${query}`} className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
-              Log in
+              {a.logIn}
             </Link>
           </>
         )}

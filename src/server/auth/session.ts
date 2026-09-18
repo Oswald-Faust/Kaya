@@ -32,12 +32,12 @@ export async function getSessionUser(): Promise<UserContext | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const [row] = await db
-    .select({ id: users.id, name: users.name, email: users.email, isGuest: users.isGuest })
+    .select({ id: users.id, name: users.name, email: users.email, isGuest: users.isGuest, locale: users.locale })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date()), isNull(users.suspendedAt)))
     .limit(1);
-  return row ? { userId: row.id, name: row.name, email: row.email, isGuest: row.isGuest } : null;
+  return row ? { userId: row.id, name: row.name, email: row.email, isGuest: row.isGuest, locale: row.locale } : null;
 }
 
 export async function destroySession(): Promise<void> {

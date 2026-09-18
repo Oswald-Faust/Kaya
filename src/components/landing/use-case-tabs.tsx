@@ -6,6 +6,9 @@ import { ArrowUpRight, Check, Clock, Hand, Mail, Pause, Sparkles } from "lucide-
 import { BrandIcon, type BrandName } from "@/components/brand/brand-logos";
 import { EASE } from "@/components/marketing/motion";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { formatNumber, formatUsd } from "@/lib/format";
 
 const DURATION = 7000;
 
@@ -20,37 +23,39 @@ const TONES = {
 } as const;
 
 const TABS = [
-  { id: "analysis", label: "Product analysis", tone: "lime", line: "Turn a URL into a business model you can trust, with a source for every fact.", Visual: AnalysisVisual },
-  { id: "icp", label: "ICP & positioning", tone: "pink", line: "Find the buyers who convert, the pains they feel and the words they use.", Visual: IcpVisual },
-  { id: "competitors", label: "Competitor map", tone: "blue", line: "Map who you're compared with and the wedge that wins the switch.", Visual: CompetitorsVisual },
-  { id: "strategy", label: "Channel strategy", tone: "tangerine", line: "Score every channel from 0 to 100 and know which ones to skip for now.", Visual: StrategyVisual },
-  { id: "budget", label: "Budget allocation", tone: "sun", line: "Split a small budget where tests can reach significance, and keep a reserve.", Visual: BudgetVisual },
-  { id: "experiments", label: "Experiments", tone: "grass", line: "Run a ranked queue of experiments tied to signups and revenue.", Visual: ExperimentsVisual },
-  { id: "ads", label: "Paid ads", tone: "pink", line: "Launch and scale Google, Meta and LinkedIn ads inside hard budget caps.", Visual: AdsVisual },
-  { id: "seo", label: "SEO pages", tone: "lilac", line: "Publish comparison and use-case pages that match buying intent.", Visual: SeoVisual },
-  { id: "community", label: "Community launches", tone: "tangerine", line: "Draft launches for Hacker News, Reddit and Product Hunt that respect each community.", Visual: CommunityVisual },
-  { id: "email", label: "Lifecycle email", tone: "blue", line: "Turn trials into customers with emails that react to what users do.", Visual: EmailVisual },
-  { id: "analytics", label: "Analytics", tone: "grass", line: "See the funnel and what each channel really costs, with every formula shown.", Visual: AnalyticsVisual },
-  { id: "brief", label: "Weekly brief", tone: "sun", line: "Read one brief on Monday: what changed, why, and what needs you.", Visual: BriefVisual },
+  { id: "analysis", tone: "lime", Visual: AnalysisVisual },
+  { id: "icp", tone: "pink", Visual: IcpVisual },
+  { id: "competitors", tone: "blue", Visual: CompetitorsVisual },
+  { id: "strategy", tone: "tangerine", Visual: StrategyVisual },
+  { id: "budget", tone: "sun", Visual: BudgetVisual },
+  { id: "experiments", tone: "grass", Visual: ExperimentsVisual },
+  { id: "ads", tone: "pink", Visual: AdsVisual },
+  { id: "seo", tone: "lilac", Visual: SeoVisual },
+  { id: "community", tone: "tangerine", Visual: CommunityVisual },
+  { id: "email", tone: "blue", Visual: EmailVisual },
+  { id: "analytics", tone: "grass", Visual: AnalyticsVisual },
+  { id: "brief", tone: "sun", Visual: BriefVisual },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
 export function UseCaseTabs() {
+  const { t } = useI18n();
+  const copy = t.useCases.tabs;
   const [active, setActive] = useState<TabId>("analysis");
   const [hovering, setHovering] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const pills = useRef<HTMLDivElement>(null);
   const inView = useInView(root, { amount: 0.35 });
-  const tab = TABS.find((t) => t.id === active)!;
-  const index = TABS.findIndex((t) => t.id === active);
+  const tab = TABS.find((x) => x.id === active)!;
+  const index = TABS.findIndex((x) => x.id === active);
   const paused = hovering || !inView;
 
   // Deep links from the menu: /#uc-seo selects the SEO tab.
   useEffect(() => {
     const apply = () => {
       const id = window.location.hash.replace("#uc-", "");
-      if (TABS.some((t) => t.id === id)) {
+      if (TABS.some((x) => x.id === id)) {
         setActive(id as TabId);
         root.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -85,7 +90,7 @@ export function UseCaseTabs() {
             transition={{ duration: 0.35, ease: EASE }}
             className="text-[clamp(18px,1.7vw,22px)] leading-snug text-muted"
           >
-            {tab.line}
+            {copy[tab.id].line}
           </motion.p>
         </AnimatePresence>
       </div>
@@ -93,36 +98,36 @@ export function UseCaseTabs() {
       <div
         ref={pills}
         role="tablist"
-        aria-label="What Kaya does"
+        aria-label={t.useCases.tablist}
         className="mt-8 flex gap-2 overflow-x-auto px-1 pb-2 [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)] [scrollbar-width:none]"
       >
         <span aria-hidden className="w-[8%] shrink-0" />
-        {TABS.map((t) => {
-          const selected = t.id === active;
+        {TABS.map((tab_) => {
+          const selected = tab_.id === active;
           return (
             <button
-              key={t.id}
-              data-tab={t.id}
+              key={tab_.id}
+              data-tab={tab_.id}
               role="tab"
-              id={`tab-${t.id}`}
+              id={`tab-${tab_.id}`}
               aria-selected={selected}
-              aria-controls={`panel-${t.id}`}
-              onClick={() => setActive(t.id)}
+              aria-controls={`panel-${tab_.id}`}
+              onClick={() => setActive(tab_.id)}
               className={cn(
                 "relative shrink-0 overflow-hidden rounded-2xl px-5 py-3 text-[15px] font-medium tracking-[-0.01em] transition-colors",
-                selected ? cn(TONES[t.tone].soft, "text-ink") : "bg-sunken text-muted hover:text-ink",
+                selected ? cn(TONES[tab_.tone].soft, "text-ink") : "bg-sunken text-muted hover:text-ink",
               )}
             >
               {selected && (
                 <span
-                  key={`${t.id}-progress`}
+                  key={`${tab_.id}-progress`}
                   aria-hidden
                   onAnimationEnd={next}
-                  className={cn("absolute inset-0 origin-left opacity-35", TONES[t.tone].base)}
+                  className={cn("absolute inset-0 origin-left opacity-35", TONES[tab_.tone].base)}
                   style={{ animation: `uc-progress ${DURATION}ms linear forwards`, animationPlayState: paused ? "paused" : "running" }}
                 />
               )}
-              <span className="relative">{t.label}</span>
+              <span className="relative">{copy[tab_.id].label}</span>
             </button>
           );
         })}
@@ -192,36 +197,38 @@ const rise = (i: number) => ({ initial: { opacity: 0, x: -8 }, animate: { opacit
 /* ───────────── Visuals ───────────── */
 
 function AnalysisVisual() {
+  const c = useI18n().t.useCases.analysis;
+  const sources = ["/pricing", "/pricing", "/docs/migrate", "/"];
+  const confirmedFlags = [true, true, false, false];
   return (
     <div className="grid gap-3 md:grid-cols-[1.3fr_0.7fr]">
       <Card>
-        <Label>Business memory · tickwarden.com</Label>
+        <Label>{c.memory}</Label>
         <ul className="mt-2 divide-y divide-line">
-          {[
-            ["Audience", "Backend engineers at 5–50 person SaaS teams", "/pricing", true],
-            ["Price", "Free for 20 monitors · Team $29/mo", "/pricing", true],
-            ["Compared with", "Cronitor, Healthchecks.io", "/docs/migrate", false],
-            ["Wedge", "Alerts when a job never starts", "/", false],
-          ].map(([label, value, source, confirmed], i) => (
-            <motion.li key={label as string} {...rise(i)} className="flex items-start gap-3 py-2.5">
+          {c.facts.map(({ label, value }, i) => {
+            const source = sources[i];
+            const confirmed = confirmedFlags[i];
+            return (
+            <motion.li key={label} {...rise(i)} className="flex items-start gap-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-subtle">{label}</p>
                 <p className="text-sm text-ink">{value}</p>
-                <p className="font-mono text-[10px] text-subtle">source {source}</p>
+                <p className="font-mono text-[10px] text-subtle">{fmt(c.source, { path: source })}</p>
               </div>
               {confirmed ? (
                 <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-grass-soft px-2 py-0.5 text-xs text-grass-deep">
-                  <Check className="size-3" /> Confirmed
+                  <Check className="size-3" /> {c.confirmed}
                 </span>
               ) : (
-                <span className="mt-1 rounded-full border border-line-strong px-2 py-0.5 text-xs text-muted">Review</span>
+                <span className="mt-1 rounded-full border border-line-strong px-2 py-0.5 text-xs text-muted">{c.review}</span>
               )}
             </motion.li>
-          ))}
+            );
+          })}
         </ul>
       </Card>
       <Card className="self-end" delay={0.15}>
-        <Label>Crawl</Label>
+        <Label>{c.crawl}</Label>
         <ul className="mt-2 space-y-1.5 font-mono text-xs text-muted">
           {["/", "/pricing", "/docs", "/docs/migrate", "/changelog", "/blog/cron-alerts"].map((path, i) => (
             <motion.li key={path} {...rise(i)} className="flex items-center gap-2">
@@ -230,37 +237,25 @@ function AnalysisVisual() {
             </motion.li>
           ))}
         </ul>
-        <p className="mt-3 rounded-lg bg-sunken px-2.5 py-2 text-xs text-muted">1 hidden instruction in page text ignored</p>
+        <p className="mt-3 rounded-lg bg-sunken px-2.5 py-2 text-xs text-muted">{c.ignored}</p>
       </Card>
     </div>
   );
 }
 
 function IcpVisual() {
-  const personas = [
-    {
-      name: "The on-call backend lead",
-      share: "62% of trials",
-      pains: ["A nightly job silently stopped for 3 days", "Alert fatigue from uptime tools"],
-      words: ["cron didn't run", "heartbeat", "missed job"],
-    },
-    {
-      name: "The solo SaaS founder",
-      share: "24% of trials",
-      pains: ["Backups and billing jobs nobody watches", "Cronitor feels pricey for 10 jobs"],
-      words: ["cheap cron monitoring", "simple alerts"],
-    },
-  ];
+  const c = useI18n().t.useCases.icp;
+  const personas = c.personas;
   return (
     <div className="grid gap-3 md:grid-cols-[1fr_1fr_0.8fr]">
       {personas.map((p, i) => (
         <Card key={p.name} delay={i * 0.12}>
           <div className="flex items-center justify-between">
-            <Label>Persona {i + 1}</Label>
+            <Label>{fmt(c.persona, { index: i + 1 })}</Label>
             <span className="rounded-full bg-pink-soft px-2 py-0.5 text-xs text-pink-deep">{p.share}</span>
           </div>
           <p className="mt-2 text-lg leading-snug font-medium tracking-[-0.02em]">{p.name}</p>
-          <p className="mt-3 text-xs text-subtle">Pains</p>
+          <p className="mt-3 text-xs text-subtle">{c.pains}</p>
           <ul className="mt-1 space-y-1 text-sm text-ink">
             {p.pains.map((pain, j) => (
               <motion.li key={pain} {...rise(j)}>
@@ -268,7 +263,7 @@ function IcpVisual() {
               </motion.li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-subtle">Words they search</p>
+          <p className="mt-3 text-xs text-subtle">{c.words}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {p.words.map((w) => (
               <span key={w} className="rounded-full bg-sunken px-2 py-0.5 font-mono text-[11px]">
@@ -279,9 +274,9 @@ function IcpVisual() {
         </Card>
       ))}
       <Card className="self-end bg-ink text-white" delay={0.3}>
-        <p className="font-mono text-[11px] tracking-wide text-white/50 uppercase">Positioning</p>
+        <p className="font-mono text-[11px] tracking-wide text-white/50 uppercase">{c.positioning}</p>
         <p className="mt-2 text-[17px] leading-snug">
-          For backend teams who can&apos;t afford a silent failure, Tickwarden is the monitor that notices when a job <span className="text-lime">never starts</span>.
+          {c.positioningBefore} <span className="text-lime">{c.positioningHighlight}</span>.
         </p>
       </Card>
     </div>
@@ -289,21 +284,19 @@ function IcpVisual() {
 }
 
 function CompetitorsVisual() {
-  const rows = [
-    ["Cronitor", "$21/mo for 10 jobs", "Mature integrations", "Flat team pricing"],
-    ["Healthchecks.io", "Free tier, open source", "Self-hosting", "Missed-start alerts in 1 min"],
-    ["Better Stack", "Bundled with uptime", "All-in-one suite", "Built only for jobs"],
-  ];
+  const c = useI18n().t.useCases.competitors;
+  const rows = c.rows;
   return (
     <div className="grid gap-3">
       <Card className="overflow-x-auto p-0 sm:p-0">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
             <tr className="border-b border-line font-mono text-[11px] text-subtle uppercase">
-              <th className="px-5 py-3 font-normal">Competitor</th>
-              <th className="px-5 py-3 font-normal">Price</th>
-              <th className="px-5 py-3 font-normal">Their strength</th>
-              <th className="px-5 py-3 font-normal">Your wedge</th>
+              {c.headers.map((h) => (
+                <th key={h} className="px-5 py-3 font-normal">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -321,11 +314,7 @@ function CompetitorsVisual() {
         </table>
       </Card>
       <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["41%", "of trial signups mention a competitor"],
-          ["3", "comparison pages worth writing"],
-          ["1", "claim to avoid: “unlimited monitors”"],
-        ].map(([v, l], i) => (
+        {c.stats.map(({ value: v, label: l }, i) => (
           <Card key={l} delay={0.2 + i * 0.08}>
             <p className="text-3xl font-medium tracking-[-0.04em] tabular">{v}</p>
             <p className="text-sm text-muted">{l}</p>
@@ -337,18 +326,20 @@ function CompetitorsVisual() {
 }
 
 function StrategyVisual() {
+  const { t } = useI18n();
+  const c = t.useCases.strategy;
   return (
     <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
       <Card>
-        <Label>Channel fit</Label>
+        <Label>{c.fit}</Label>
         <ul className="mt-3 space-y-3">
           {(
             [
-              ["Google Search", 88, "googleads"],
-              ["SEO pages", 84, "searchconsole"],
-              ["Hacker News", 66, "hackernews"],
-              ["LinkedIn", 41, "linkedin"],
-              ["Meta Ads", 22, "meta"],
+              [t.common.channels.google_search, 88, "googleads"],
+              [t.common.channels.seo_content, 84, "searchconsole"],
+              [t.common.channels.hacker_news, 66, "hackernews"],
+              [t.common.channels.linkedin, 41, "linkedin"],
+              [t.common.channels.meta_ads, 22, "meta"],
             ] as [string, number, BrandName][]
           ).map(([name, score, brand]) => (
             <li key={name}>
@@ -365,14 +356,14 @@ function StrategyVisual() {
         </ul>
       </Card>
       <Card className="self-end" delay={0.15}>
-        <Label>Don&apos;t use right now</Label>
+        <Label>{c.skip}</Label>
         <p className="mt-2 flex items-center gap-2 text-lg font-medium tracking-[-0.02em]">
           <BrandIcon brand="meta" className="size-5" /> Meta Ads
         </p>
         <ul className="mt-2 space-y-1.5 text-sm text-muted">
-          <li>• Needs ~$500/mo to exit learning</li>
-          <li>• Buyers search before they scroll</li>
-          <li>• Revisit after 50 paying customers</li>
+          {c.reasons.map((r) => (
+            <li key={r}>• {r}</li>
+          ))}
         </ul>
       </Card>
     </div>
@@ -380,18 +371,21 @@ function StrategyVisual() {
 }
 
 function BudgetVisual() {
+  const { t, locale } = useI18n();
+  const c = t.useCases.budget;
+  const usd = (v: number) => formatUsd(v, {}, locale);
   const lines = [
-    { name: "Google Search", amount: 600, min: 300, status: "Funded" },
-    { name: "SEO pages", amount: 450, min: 0, status: "Funded" },
-    { name: "YouTube creators", amount: 0, min: 400, status: "Too small to learn" },
-    { name: "Reserve", amount: 450, min: 0, status: "Held" },
+    { name: c.lines[0], amount: 600, min: 300, status: c.funded, tone: "bg-grass-soft text-grass-deep" },
+    { name: c.lines[1], amount: 450, min: 0, status: c.funded, tone: "bg-grass-soft text-grass-deep" },
+    { name: c.lines[2], amount: 0, min: 400, status: c.tooSmall, tone: "bg-tangerine-soft text-tangerine-deep" },
+    { name: c.lines[3], amount: 450, min: 0, status: c.held, tone: "bg-sunken text-muted" },
   ];
   return (
     <div className="grid gap-3 md:grid-cols-[1.3fr_0.7fr]">
       <Card>
         <div className="flex items-baseline justify-between">
-          <Label>Budget · this month</Label>
-          <span className="text-2xl font-medium tracking-[-0.04em] tabular">$1,500</span>
+          <Label>{c.title}</Label>
+          <span className="text-2xl font-medium tracking-[-0.04em] tabular">{usd(1500)}</span>
         </div>
         <div className="mt-4 flex h-4 overflow-hidden rounded-full bg-sunken">
           {[
@@ -406,39 +400,40 @@ function BudgetVisual() {
           {lines.map((l, i) => (
             <motion.li key={l.name} {...rise(i)} className="flex items-center gap-3 py-2.5 text-sm">
               <span className="flex-1">{l.name}</span>
-              <span className="w-24 font-mono text-[11px] text-subtle">min ${l.min}</span>
-              <span className={cn("rounded-full px-2 py-0.5 text-xs", l.status === "Funded" ? "bg-grass-soft text-grass-deep" : l.status === "Held" ? "bg-sunken text-muted" : "bg-tangerine-soft text-tangerine-deep")}>
+              <span className="w-24 font-mono text-[11px] text-subtle">{fmt(c.min, { amount: usd(l.min) })}</span>
+              <span className={cn("rounded-full px-2 py-0.5 text-xs", l.tone)}>
                 {l.status}
               </span>
-              <span className="w-14 text-right tabular">${l.amount}</span>
+              <span className="w-14 text-right tabular">{usd(l.amount)}</span>
             </motion.li>
           ))}
         </ul>
       </Card>
       <Card className="self-end" delay={0.2}>
-        <Label>Guardrails</Label>
+        <Label>{c.guardrails}</Label>
         <ul className="mt-2 space-y-2 text-sm">
-          <li className="flex justify-between"><span>Max daily spend</span><span className="tabular">$60</span></li>
-          <li className="flex justify-between"><span>Per experiment</span><span className="tabular">$500</span></li>
-          <li className="flex justify-between"><span>Auto increase</span><span className="tabular">+20%</span></li>
+          <li className="flex justify-between"><span>{c.maxDaily}</span><span className="tabular">{usd(60)}</span></li>
+          <li className="flex justify-between"><span>{c.perExperiment}</span><span className="tabular">{usd(500)}</span></li>
+          <li className="flex justify-between"><span>{c.autoIncrease}</span><span className="tabular">+20%</span></li>
         </ul>
-        <p className="mt-3 text-xs text-muted">Checked again at the moment of spending.</p>
+        <p className="mt-3 text-xs text-muted">{c.checked}</p>
       </Card>
     </div>
   );
 }
 
 function ExperimentsVisual() {
+  const c = useI18n().t.useCases.experiments;
   return (
     <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
       <Card>
-        <Label>Queue · ranked</Label>
+        <Label>{c.queue}</Label>
         <ul className="mt-2 space-y-2">
           {[
-            ["EXP-016", "“Cronitor alternative” comparison page", "Running", "bg-blue-soft text-blue-deep"],
-            ["EXP-017", "Search ads on “cron job monitoring”", "Needs you", "bg-sun-soft text-sun-deep"],
-            ["EXP-018", "Show HN: open-source heartbeat CLI", "Queued", "bg-sunken text-muted"],
-            ["EXP-019", "Onboarding email: first failed job alert", "Queued", "bg-sunken text-muted"],
+            ["EXP-016", c.items[0], c.running, "bg-blue-soft text-blue-deep"],
+            ["EXP-017", c.items[1], c.needsYou, "bg-sun-soft text-sun-deep"],
+            ["EXP-018", c.items[2], c.queued, "bg-sunken text-muted"],
+            ["EXP-019", c.items[3], c.queued, "bg-sunken text-muted"],
           ].map(([key, title, status, tone], i) => (
             <motion.li key={key} {...rise(i)} className="rounded-xl border border-line px-3 py-2.5">
               <div className="flex items-center gap-2">
@@ -452,11 +447,11 @@ function ExperimentsVisual() {
       </Card>
       <Card className="self-end" delay={0.15}>
         <div className="flex items-center justify-between">
-          <Label>EXP-014 · result</Label>
-          <span className="rounded-full bg-grass-soft px-2 py-0.5 text-xs font-medium text-grass-deep">Winner</span>
+          <Label>{c.result}</Label>
+          <span className="rounded-full bg-grass-soft px-2 py-0.5 text-xs font-medium text-grass-deep">{c.winner}</span>
         </div>
         <p className="mt-2 text-[40px] leading-none font-medium tracking-[-0.05em] text-ink">+31%</p>
-        <p className="text-sm text-muted">trial starts from a comparison page</p>
+        <p className="text-sm text-muted">{c.resultLine}</p>
         <div className="mt-4 flex h-24 items-end gap-3">
           <motion.div initial={{ height: 0 }} animate={{ height: "56%" }} transition={{ duration: 0.8, ease: EASE, delay: 0.3 }} className="flex-1 rounded-lg bg-stone" />
           <motion.div initial={{ height: 0 }} animate={{ height: "100%" }} transition={{ duration: 0.8, ease: EASE, delay: 0.45 }} className="flex-1 rounded-lg bg-grass" />
@@ -468,19 +463,20 @@ function ExperimentsVisual() {
 }
 
 function AdsVisual() {
+  const c = useI18n().t.useCases.ads;
   return (
     <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
       <Card>
         <div className="flex items-center gap-2">
           <BrandIcon brand="googleads" className="size-4" />
-          <Label>Approval · spend</Label>
+          <Label>{c.approval}</Label>
         </div>
-        <p className="mt-2 text-xl font-medium tracking-[-0.02em] text-ink">Raise Google Search from $30 to $45/day</p>
+        <p className="mt-2 text-xl font-medium tracking-[-0.02em] text-ink">{c.title}</p>
         <ul className="mt-3 space-y-1.5 text-sm">
           {[
-            [Check, "text-grass", "Max daily spend", "$45 of $60"],
-            [Check, "text-grass", "Monthly budget", "$1,180 of $1,500"],
-            [Hand, "text-sun-deep", "Automatic increase limit", "+50% vs +20%"],
+            [Check, "text-grass", c.rules[0].rule, c.rules[0].detail],
+            [Check, "text-grass", c.rules[1].rule, c.rules[1].detail],
+            [Hand, "text-sun-deep", c.rules[2].rule, c.rules[2].detail],
           ].map(([Icon, tone, rule, detail], i) => {
             const I = Icon as typeof Check;
             return (
@@ -492,27 +488,27 @@ function AdsVisual() {
           })}
         </ul>
         <div className="mt-4 flex gap-2">
-          <span className="m-pulse rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white">Approve</span>
-          <span className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-muted">Reject</span>
+          <span className="m-pulse rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white">{c.approve}</span>
+          <span className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-muted">{c.reject}</span>
         </div>
       </Card>
       <div className="grid gap-3 self-end">
         <Card delay={0.15}>
           <div className="flex items-center gap-2">
             <BrandIcon brand="meta" className="size-4" />
-            <Label>Done automatically</Label>
+            <Label>{c.auto}</Label>
           </div>
           <p className="mt-2 flex items-center gap-2 text-sm text-ink">
-            <Pause className="size-3.5" /> Paused “Retargeting — v2”
+            <Pause className="size-3.5" /> {c.paused}
           </p>
-          <p className="text-xs text-muted">CAC $212 after 9 days, 2.5× target.</p>
+          <p className="text-xs text-muted">{c.pausedWhy}</p>
         </Card>
         <Card delay={0.25}>
           <div className="flex items-center gap-2">
             <BrandIcon brand="linkedin" className="size-4" />
-            <Label>Draft ready</Label>
+            <Label>{c.draft}</Label>
           </div>
-          <p className="mt-2 text-sm">3 ad variants for “Heads of Platform”</p>
+          <p className="mt-2 text-sm">{c.draftLine}</p>
         </Card>
       </div>
     </div>
@@ -520,6 +516,7 @@ function AdsVisual() {
 }
 
 function SeoVisual() {
+  const c = useI18n().t.useCases.seo;
   return (
     <div className="grid gap-3 md:grid-cols-[1.3fr_0.7fr]">
       <Card className="p-0 sm:p-0">
@@ -530,10 +527,10 @@ function SeoVisual() {
           <span className="ml-2 font-mono text-[11px] text-subtle">tickwarden.com/vs/cronitor</span>
         </div>
         <div className="p-6">
-          <p className="text-3xl font-medium tracking-[-0.04em] text-ink">Tickwarden vs Cronitor</p>
-          <p className="mt-2 text-sm text-muted">Alerts when a job never starts, flat pricing for teams, and a 2-minute migration.</p>
+          <p className="text-3xl font-medium tracking-[-0.04em] text-ink">{c.title}</p>
+          <p className="mt-2 text-sm text-muted">{c.lead}</p>
           <div className="mt-5 grid grid-cols-3 gap-2 text-xs">
-            {["Missed-start alerts", "Flat $29 team plan", "Import from Cronitor"].map((f, i) => (
+            {c.features.map((f, i) => (
               <motion.div key={f} {...rise(i)} className="rounded-lg bg-lilac-soft px-2 py-2 text-lilac-deep">
                 {f}
               </motion.div>
@@ -545,13 +542,13 @@ function SeoVisual() {
         <Card delay={0.15}>
           <div className="flex items-center gap-2">
             <BrandIcon brand="searchconsole" className="size-4" />
-            <Label>Opportunity</Label>
+            <Label>{c.opportunity}</Label>
           </div>
-          <p className="mt-2 text-sm">“cronitor alternative” · 1.3k searches/mo · position 34 → target 5</p>
+          <p className="mt-2 text-sm">{c.opportunityLine}</p>
         </Card>
         <Card delay={0.25}>
           <p className="inline-flex items-center gap-1.5 rounded-full bg-sun-soft px-2.5 py-1 text-xs text-sun-deep">
-            <Hand className="size-3" /> Waiting for you to publish
+            <Hand className="size-3" /> {c.waiting}
           </p>
         </Card>
       </div>
@@ -560,39 +557,40 @@ function SeoVisual() {
 }
 
 function CommunityVisual() {
+  const c = useI18n().t.useCases.community;
   return (
     <div className="grid gap-3 md:grid-cols-[1.25fr_0.75fr]">
       <Card>
         <div className="flex items-center gap-2">
           <BrandIcon brand="hackernews" className="size-4" />
-          <Label>Draft · you post it</Label>
+          <Label>{c.draft}</Label>
         </div>
-        <p className="mt-3 text-lg leading-snug font-medium tracking-[-0.02em]">Show HN: Tickwarden – get alerted when a cron job never starts</p>
+        <p className="mt-3 text-lg leading-snug font-medium tracking-[-0.02em]">{c.title}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          I kept finding out about broken backups days later. Tickwarden pings you when an expected heartbeat doesn&apos;t arrive. The CLI is open source; the hosted version is free for 20 monitors…
+          {c.body}
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          {["No superlatives", "Maker story first", "Link to source"].map((c, i) => (
-            <motion.span key={c} {...rise(i)} className="inline-flex items-center gap-1 rounded-full bg-grass-soft px-2 py-1 text-grass-deep">
-              <Check className="size-3" /> {c}
+          {c.checks.map((check, i) => (
+            <motion.span key={check} {...rise(i)} className="inline-flex items-center gap-1 rounded-full bg-grass-soft px-2 py-1 text-grass-deep">
+              <Check className="size-3" /> {check}
             </motion.span>
           ))}
         </div>
       </Card>
       <div className="grid gap-3 self-end">
         <Card delay={0.15}>
-          <Label>Best window</Label>
+          <Label>{c.window}</Label>
           <p className="mt-2 flex items-center gap-2 text-sm">
-            <Clock className="size-3.5" /> Tuesday, 8:00 PT
+            <Clock className="size-3.5" /> {c.windowTime}
           </p>
-          <p className="text-xs text-muted">Reply to every comment for 3 hours.</p>
+          <p className="text-xs text-muted">{c.windowTip}</p>
         </Card>
         <Card delay={0.25}>
           <div className="flex items-center gap-2">
             <BrandIcon brand="reddit" className="size-4" />
-            <Label>r/devops rules</Label>
+            <Label>{c.rules}</Label>
           </div>
-          <p className="mt-2 text-sm text-muted">Self-promotion only on Saturdays. Queued a helpful post instead.</p>
+          <p className="mt-2 text-sm text-muted">{c.rulesLine}</p>
         </Card>
       </div>
     </div>
@@ -600,25 +598,20 @@ function CommunityVisual() {
 }
 
 function EmailVisual() {
-  const steps = [
-    ["Trial started", "trigger", ""],
-    ["Add your first monitor", "Day 0 · 61% open", ""],
-    ["First alert fired", "event", ""],
-    ["Invite your on-call team", "+ 2 hours · 48% open", ""],
-    ["Your trial ends Friday", "Day 12 · 18.2% convert", ""],
-  ];
+  const c = useI18n().t.useCases.email;
+  const events = [true, false, true, false, false];
   return (
     <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
       <Card>
         <div className="flex items-center gap-2">
           <BrandIcon brand="resend" className="size-4" />
-          <Label>Trial to paid · sequence</Label>
+          <Label>{c.sequence}</Label>
         </div>
         <ol className="relative mt-4 space-y-3 before:absolute before:top-2 before:bottom-2 before:left-[13px] before:w-px before:bg-line">
-          {steps.map(([title, meta], i) => (
+          {c.steps.map(({ title, meta }, i) => (
             <motion.li key={title} {...rise(i)} className="relative flex items-center gap-3">
-              <span className={cn("grid size-7 place-items-center rounded-full", meta === "trigger" || meta === "event" ? "bg-ink text-white" : "bg-blue-soft text-blue-deep")}>
-                {meta === "trigger" || meta === "event" ? <Sparkles className="size-3.5" /> : <Mail className="size-3.5" />}
+              <span className={cn("grid size-7 place-items-center rounded-full", events[i] ? "bg-ink text-white" : "bg-blue-soft text-blue-deep")}>
+                {events[i] ? <Sparkles className="size-3.5" /> : <Mail className="size-3.5" />}
               </span>
               <div>
                 <p className="text-sm">{title}</p>
@@ -629,31 +622,33 @@ function EmailVisual() {
         </ol>
       </Card>
       <Card className="self-end" delay={0.2}>
-        <Label>Result vs. last month</Label>
-        <p className="mt-2 text-[40px] leading-none font-medium tracking-[-0.05em]">+2.1 pts</p>
-        <p className="text-sm text-muted">trial → paid, from 16.1% to 18.2%</p>
+        <Label>{c.result}</Label>
+        <p className="mt-2 text-[40px] leading-none font-medium tracking-[-0.05em]">{c.resultValue}</p>
+        <p className="text-sm text-muted">{c.resultLine}</p>
       </Card>
     </div>
   );
 }
 
 function AnalyticsVisual() {
+  const { t, locale } = useI18n();
+  const c = t.useCases.analytics;
   const funnel = [
-    ["Visitors", 18420, 100],
-    ["Signups", 612, 62],
-    ["Activated", 341, 42],
-    ["Paid", 62, 22],
+    [c.stages[0], 18420, 100],
+    [c.stages[1], 612, 62],
+    [c.stages[2], 341, 42],
+    [c.stages[3], 62, 22],
   ] as const;
   return (
     <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
       <Card>
-        <Label>Funnel · 30 days</Label>
+        <Label>{c.funnel}</Label>
         <ul className="mt-3 space-y-3">
           {funnel.map(([name, value, width]) => (
             <li key={name}>
               <div className="flex justify-between text-sm">
                 <span>{name}</span>
-                <span className="tabular">{value.toLocaleString("en-US")}</span>
+                <span className="tabular">{formatNumber(value, locale)}</span>
               </div>
               <Bar value={width} className="bg-grass" />
             </li>
@@ -661,13 +656,13 @@ function AnalyticsVisual() {
         </ul>
       </Card>
       <Card className="self-end" delay={0.15}>
-        <Label>CAC by channel</Label>
+        <Label>{c.cac}</Label>
         <ul className="mt-2 divide-y divide-line text-sm">
           {(
             [
-              ["googleads", "Google Search", "$71"],
-              ["searchconsole", "SEO pages", "$38"],
-              ["meta", "Meta Ads", "$212"],
+              ["googleads", c.channels[0], formatUsd(71, {}, locale)],
+              ["searchconsole", c.channels[1], formatUsd(38, {}, locale)],
+              ["meta", c.channels[2], formatUsd(212, {}, locale)],
             ] as [BrandName, string, string][]
           ).map(([b, name, cac], i) => (
             <motion.li key={name} {...rise(i)} className="flex items-center gap-2 py-2">
@@ -676,13 +671,14 @@ function AnalyticsVisual() {
             </motion.li>
           ))}
         </ul>
-        <p className="mt-2 font-mono text-[10px] text-subtle">CAC = paid spend ÷ new paying customers</p>
+        <p className="mt-2 font-mono text-[10px] text-subtle">{c.formula}</p>
       </Card>
     </div>
   );
 }
 
 function BriefVisual() {
+  const c = useI18n().t.useCases.brief;
   return (
     <Card className="mx-auto max-w-2xl">
       <div className="flex items-center gap-2">
@@ -690,24 +686,20 @@ function BriefVisual() {
           <Sparkles className="size-4" />
         </span>
         <div>
-          <p className="text-sm font-medium text-ink">Kaya · Monday brief</p>
-          <p className="text-xs text-subtle">Tickwarden · week 15</p>
+          <p className="text-sm font-medium text-ink">{c.from}</p>
+          <p className="text-xs text-subtle">{c.week}</p>
         </div>
       </div>
-      <p className="mt-5 text-2xl leading-snug font-medium tracking-[-0.03em] text-ink">Signups −14% this week. It&apos;s mostly one paused campaign.</p>
+      <p className="mt-5 text-2xl leading-snug font-medium tracking-[-0.03em] text-ink">{c.headline}</p>
       <ul className="mt-4 space-y-2 text-[15px] text-muted">
-        {[
-          "The Google campaign paused on day 3 explains 80% of the drop.",
-          "Organic signups are up 9%, led by the Cronitor comparison page.",
-          "MRR is $6,420, on pace for $10k by December 31.",
-        ].map((line, i) => (
+        {c.lines.map((line, i) => (
           <motion.li key={line} {...rise(i)}>
             • {line}
           </motion.li>
         ))}
       </ul>
       <p className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-agent">
-        1 approval waiting <ArrowUpRight className="size-3.5" />
+        {c.waiting} <ArrowUpRight className="size-3.5" />
       </p>
     </Card>
   );

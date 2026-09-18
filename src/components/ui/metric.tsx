@@ -17,14 +17,14 @@ export interface MetricProps {
 export function Metric({ label, value, delta, invert, hint, formula, footer, className }: MetricProps) {
   const good = delta === null || delta === undefined || delta === 0 ? null : invert ? delta < 0 : delta > 0;
   return (
-    <div className={cn("min-w-0 px-4 py-3", className)} title={formula ? `${label} = ${formula}` : undefined}>
-      <div className="flex items-center gap-1 text-xs text-muted">{label}</div>
+    <div className={cn("min-w-0 px-4 py-3.5", className)} title={formula ? `${label} = ${formula}` : undefined}>
+      <div className="flex items-center gap-1 text-sm text-muted">{label}</div>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-xl font-semibold tracking-tight text-ink tabular">{value}</span>
+        <span className="text-2xl font-semibold tracking-tight text-ink tabular">{value}</span>
         {delta !== undefined && (
           <span
             className={cn(
-              "text-xs font-medium tabular",
+              "text-sm font-medium tabular",
               good === null ? "text-subtle" : good ? "text-positive" : "text-negative",
             )}
           >
@@ -32,7 +32,7 @@ export function Metric({ label, value, delta, invert, hint, formula, footer, cla
           </span>
         )}
       </div>
-      {hint && <div className="mt-0.5 truncate text-2xs text-subtle">{hint}</div>}
+      {hint && <div className="mt-0.5 truncate text-xs text-subtle">{hint}</div>}
       {footer}
     </div>
   );

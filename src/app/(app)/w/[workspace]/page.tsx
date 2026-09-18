@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowUpRight, PlugZap } from "lucide-react";
 import { ApprovalCard } from "@/components/product/approval-card";
-import { EffortDots, EvaluationSignal, metricLabel, ScoreBar, thresholdLabel } from "@/components/product/experiment-bits";
+import { EffortDots, EvaluationSignal, ScoreBar } from "@/components/product/experiment-bits";
+import { metricLabel, thresholdLabel } from "@/components/product/experiment-format";
+import { RunActionButton } from "@/components/product/run-action-button";
 import { RecordResultButton } from "@/components/product/run-result-button";
 import { Badge, ChannelBadge, ConfidenceBadge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -9,27 +11,38 @@ import { AreaChart, Sparkline } from "@/components/ui/chart";
 import { Metric, MetricGroup } from "@/components/ui/metric";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { EmptyState, Notice } from "@/components/ui/states";
-import { requireWorkspace } from "@/server/context";
+import { canWrite, requireWorkspace } from "@/server/context";
 import { getCommandCenter } from "@/server/services/command-center";
+import { cn } from "@/lib/cn";
 import { experimentKey, formatDate, formatNumber, formatPct, formatUsd, relativeTime } from "@/lib/format";
-import { askAgentAction } from "./actions";
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
+import { translateServerText } from "@/i18n/server-text";
 
-export const metadata = { title: "Command Center" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.app.command.metaTitle };
+}
 
 export default async function CommandCenterPage({ params }: PageProps<"/w/[workspace]">) {
   const { workspace } = await params;
   const ctx = await requireWorkspace(workspace);
-  const data = await getCommandCenter(ctx);
+  const [data, { t, locale }] = await Promise.all([getCommandCenter(ctx), getI18n()]);
+  const c = t.app.command;
+  const usd = (v: number | null | undefined, o: { compact?: boolean; cents?: boolean } = {}) => formatUsd(v, o, locale);
+  const date = (v: string | Date, o?: Intl.DateTimeFormatOptions) => formatDate(v, o, locale);
   const slug = ctx.workspaceSlug;
   const base = `/w/${slug}`;
+  const canRun = canWrite(ctx);
 
   if (!data) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
         <EmptyState
-          title="This workspace has no product yet"
-          description="Paste your product URL and Kaya will build the business model, strategy and first experiments."
-          action={<ButtonLink href="/start" variant="primary">Analyze a product</ButtonLink>}
+          title={c.noProductTitle}
+          description={c.noProductBody}
+          action={<ButtonLink href="/start" variant="primary">{c.analyze}</ButtonLink>}
         />
       </div>
     );
@@ -41,37 +54,28 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
     <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Command Center</h1>
-          <p className="mt-0.5 text-sm text-muted">
-            {data.shell.product?.name} · {data.asOf ? `data through ${formatDate(data.asOf, { month: "long", day: "numeric" })}` : "no business data yet"} · last 30 days vs previous 30
+          <h1 className="text-3xl font-semibold tracking-tight">{c.title}</h1>
+          <p className="mt-1 text-sm text-muted">
+            {data.shell.product?.name} · {data.asOf ? fmt(c.dataThrough, { date: date(data.asOf, { month: "long", day: "numeric" }) }) : c.noData} · {c.window}
           </p>
         </div>
-        <form action={askAgentAction.bind(null, slug)} className="flex w-full max-w-md items-center gap-2 sm:w-auto">
-          <label htmlFor="ask" className="sr-only">Ask the agent</label>
-          <input
-            id="ask"
-            name="goal"
-            placeholder="Ask the agent: Why did signups change this week?"
-            className="h-8 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 text-sm outline-none placeholder:text-subtle focus:border-agent sm:w-80"
-          />
-          <button type="submit" className="h-8 shrink-0 rounded-md bg-agent px-3 text-sm font-medium text-white hover:bg-[#2238ad]">
-            Ask
-          </button>
-        </form>
+        <ButtonLink href={`${base}/agent`} size="sm" variant="secondary">
+          {c.askAgent}
+        </ButtonLink>
       </div>
 
       {data.asOf ? (
         <MetricGroup>
-          <Metric label="MRR" value={formatUsd(strip.mrr.value)} delta={strip.mrr.delta} formula={strip.mrr.formula} footer={<Sparkline values={data.sparks.mrr} className="mt-1.5" />} />
-          <Metric label="Net new MRR" value={formatUsd(strip.netNewMrr.value)} delta={strip.netNewMrr.delta} formula={strip.netNewMrr.formula} hint="New minus churned" />
-          <Metric label="Signups" value={formatNumber(strip.signups.value)} delta={strip.signups.delta} formula={strip.signups.formula} footer={<Sparkline values={data.sparks.signups} className="mt-1.5" />} />
-          <Metric label="Signup rate" value={formatPct(strip.signupRate.value)} delta={strip.signupRate.delta} formula={strip.signupRate.formula} />
-          <Metric label="New customers" value={formatNumber(strip.newCustomers.value)} delta={strip.newCustomers.delta} formula={strip.newCustomers.formula} />
-          <Metric label="Blended CAC" value={formatUsd(strip.cac.value)} delta={strip.cac.delta} invert formula={strip.cac.formula} hint={`${formatUsd(strip.cac.spend)} spend`} />
+          <Metric label={c.mrr} value={usd(strip.mrr.value)} delta={strip.mrr.delta} formula={strip.mrr.formula} footer={<Sparkline values={data.sparks.mrr} className="mt-1.5" />} />
+          <Metric label={c.netNewMrr} value={usd(strip.netNewMrr.value)} delta={strip.netNewMrr.delta} formula={strip.netNewMrr.formula} hint={c.newMinusChurned} />
+          <Metric label={c.signups} value={formatNumber(strip.signups.value, locale)} delta={strip.signups.delta} formula={strip.signups.formula} footer={<Sparkline values={data.sparks.signups} className="mt-1.5" />} />
+          <Metric label={c.signupRate} value={formatPct(strip.signupRate.value)} delta={strip.signupRate.delta} formula={strip.signupRate.formula} />
+          <Metric label={c.newCustomers} value={formatNumber(strip.newCustomers.value, locale)} delta={strip.newCustomers.delta} formula={strip.newCustomers.formula} />
+          <Metric label={c.blendedCac} value={usd(strip.cac.value)} delta={strip.cac.delta} invert formula={strip.cac.formula} hint={fmt(c.spendHint, { amount: usd(strip.cac.spend) })} />
         </MetricGroup>
       ) : (
-        <Notice tone="disconnected" title="No revenue or analytics data connected" action={<ButtonLink href={`${base}/integrations`} size="sm">Connect data</ButtonLink>}>
-          Recommendations use your product analysis only until revenue and analytics are connected.
+        <Notice tone="disconnected" title={c.noDataTitle} action={<ButtonLink href={`${base}/integrations`} size="sm">{c.connectData}</ButtonLink>}>
+          {c.noDataBody}
         </Notice>
       )}
 
@@ -83,31 +87,31 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="flex items-center gap-2 text-xs font-medium text-agent">
                     <span className="size-1.5 rounded-full bg-agent" aria-hidden />
-                    Growth brief · {formatDate(data.asOf!, { weekday: "long", month: "short", day: "numeric" })}
+                    {fmt(c.brief, { date: date(data.asOf!, { weekday: "long", month: "short", day: "numeric" }) })}
                   </p>
                   <Link href={`${base}/analytics`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
-                    Review analysis <ArrowUpRight className="size-3" />
+                    {c.reviewAnalysis} <ArrowUpRight className="size-3" />
                   </Link>
                 </div>
                 <h2 className="mt-2 text-xl font-semibold tracking-tight">{brief.headline}</h2>
                 <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm md:grid-cols-2">
-                  <BriefItem label="What changed">{brief.whatChanged}</BriefItem>
-                  <BriefItem label="Why it matters">{brief.whyItMatters}</BriefItem>
-                  <BriefItem label="Biggest opportunity">{brief.opportunity}</BriefItem>
-                  <BriefItem label="Biggest risk">{brief.risk}</BriefItem>
+                  <BriefItem label={c.whatChanged}>{brief.whatChanged}</BriefItem>
+                  <BriefItem label={c.whyItMatters}>{brief.whyItMatters}</BriefItem>
+                  <BriefItem label={c.opportunity}>{brief.opportunity}</BriefItem>
+                  <BriefItem label={c.risk}>{brief.risk}</BriefItem>
                 </dl>
                 <div className="mt-4 rounded-md bg-agent-soft px-3 py-2.5">
-                  <p className="text-2xs font-medium text-agent">Recommended next</p>
+                  <p className="text-2xs font-medium text-agent">{c.recommendedNext}</p>
                   <p className="mt-0.5 text-sm text-ink">{brief.recommendation}</p>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {brief.approvalId && (
                     <a href="#approvals" className="inline-flex h-7 items-center rounded-md bg-ink px-2.5 text-xs font-medium text-white hover:bg-ink-hover">
-                      Review approval
+                      {c.reviewApproval}
                     </a>
                   )}
                   <ButtonLink href={`${base}/agent`} size="sm" variant="secondary">
-                    Ask agent
+                    {c.askAgent}
                   </ButtonLink>
                   <span className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-2xs text-muted">
                     {brief.evidence.map((e) => (
@@ -123,38 +127,40 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
 
           <Panel>
             <PanelHeader
-              title="Next best actions"
-              description="Ranked by impact, confidence, information gain, channel fit, effort, cost and time to signal."
-              actions={<ButtonLink href={`${base}/experiments`} size="sm" variant="ghost">All experiments</ButtonLink>}
+              title={c.nextActions}
+              description={canRun ? c.runHint : c.nextActionsHint}
+              actions={<ButtonLink href={`${base}/experiments`} size="sm" variant="ghost">{c.allExperiments}</ButtonLink>}
             />
             {data.nextActions.length === 0 ? (
-              <EmptyState title="Nothing queued" description="Ask the agent to propose experiments from your strategy." />
+              <EmptyState title={c.nothingQueued} description={c.nothingQueuedHint} />
             ) : (
               <ol className="divide-y divide-line border-t border-line">
                 {data.nextActions.map((r, i) => (
-                  <li key={r.experiment.id} className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 px-4 py-3 sm:grid-cols-[20px_minmax(0,1fr)_auto]">
-                    <span className="pt-0.5 text-xs text-subtle tabular">{i + 1}</span>
+                  <li key={r.experiment.id} className={cn("grid grid-cols-[20px_minmax(0,1fr)] gap-3 px-4 py-4 sm:grid-cols-[20px_minmax(0,1fr)_auto]", i === 0 && "bg-agent-soft/40")}>
+                    <span className="pt-1 text-sm text-subtle tabular">{i + 1}</span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`${base}/experiments/${r.experiment.number}`} className="truncate text-sm font-medium text-ink hover:underline">
+                        {i === 0 && <Badge tone="agent">{c.topAction}</Badge>}
+                        <Link href={`${base}/experiments/${r.experiment.number}`} className="truncate text-base font-medium text-ink hover:underline">
                           {r.experiment.name}
                         </Link>
                         {r.experiment.status === "awaiting_approval" && <StatusBadge status="awaiting_approval" />}
                       </div>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted">{r.experiment.rationale}</p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-muted">
+                      <p className="mt-1 line-clamp-2 text-sm text-muted">{r.experiment.rationale}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                         <ChannelBadge channel={r.experiment.channel} />
                         <span className="tabular">{experimentKey(r.experiment.number)}</span>
-                        <span>Impact <span className="text-ink">{r.experiment.impact}/5</span></span>
+                        <span>{c.impact} <span className="text-ink">{r.experiment.impact}/5</span></span>
                         <ConfidenceBadge value={r.adjustedConfidence} />
-                        <span className="inline-flex items-center gap-1">Effort <EffortDots effort={r.experiment.effort} /></span>
-                        <span>Cost <span className="text-ink">{r.experiment.budget > 0 ? formatUsd(r.experiment.budget) : "Organic"}</span></span>
-                        <span>Signal in <span className="text-ink">{r.experiment.timeToSignalDays}d</span></span>
+                        <span className="inline-flex items-center gap-1">{c.effort} <EffortDots effort={r.experiment.effort} /></span>
+                        <span>{c.cost} <span className="text-ink">{r.experiment.budget > 0 ? usd(r.experiment.budget) : t.app.common.organic}</span></span>
+                        <span>{c.signalIn} <span className="text-ink">{fmt(t.app.common.days, { count: r.experiment.timeToSignalDays })}</span></span>
                       </div>
-                      {r.boostedBy[0] && <p className="mt-1.5 text-2xs text-positive">Backed by {r.boostedBy[0].statement}</p>}
+                      {r.boostedBy[0] && <p className="mt-1.5 text-xs text-positive">{fmt(c.backedBy, { statement: r.boostedBy[0].statement })}</p>}
                     </div>
-                    <div className="col-start-2 sm:col-start-auto sm:pt-0.5">
+                    <div className="col-start-2 flex items-center gap-3 sm:col-start-auto sm:flex-col sm:items-end sm:gap-2">
                       <ScoreBar score={r.score} />
+                      {canRun && <RunActionButton slug={slug} experimentId={r.experiment.id} variant={i === 0 ? "primary" : "secondary"} />}
                     </div>
                   </li>
                 ))}
@@ -162,13 +168,13 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
             )}
             {data.suppressed.length > 0 && (
               <div className="border-t border-line bg-raised px-4 py-2.5 text-xs text-muted">
-                <span className="font-medium text-ink">Not recommended:</span>{" "}
+                <span className="font-medium text-ink">{c.notRecommended}</span>{" "}
                 {data.suppressed.map((s) => (
                   <span key={s.experiment.id}>
                     <Link href={`${base}/experiments/${s.experiment.number}`} className="underline decoration-line-strong underline-offset-2 hover:text-ink">
                       {experimentKey(s.experiment.number)}
                     </Link>{" "}
-                    — disproved by {s.suppressedBy!.statement.split(" · ")[0]}.{" "}
+                    {fmt(c.disprovedBy, { statement: s.suppressedBy!.statement.split(" · ")[0] })}{" "}
                   </span>
                 ))}
               </div>
@@ -176,20 +182,20 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
           </Panel>
 
           <Panel>
-            <PanelHeader title="Running experiments" count={data.running.length} />
+            <PanelHeader title={c.running} count={data.running.length} />
             {data.running.length === 0 ? (
-              <EmptyState title="No experiments running" description="The business isn't learning anything this week. Approve the top action to start one." />
+              <EmptyState title={c.noneRunning} description={c.noneRunningHint} />
             ) : (
               <div className="overflow-x-auto border-t border-line">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="text-left text-2xs text-subtle">
-                      <th className="px-4 py-2 font-medium">Experiment</th>
-                      <th className="px-3 py-2 font-medium">Metric · threshold</th>
-                      <th className="px-3 py-2 font-medium">Current result</th>
-                      <th className="px-3 py-2 font-medium">Confidence</th>
-                      <th className="px-3 py-2 font-medium">Spend</th>
-                      <th className="px-3 py-2 font-medium">Time left</th>
+                      <th className="px-4 py-2 font-medium">{t.app.common.experiment}</th>
+                      <th className="px-3 py-2 font-medium">{c.metricThreshold}</th>
+                      <th className="px-3 py-2 font-medium">{c.currentResult}</th>
+                      <th className="px-3 py-2 font-medium">{t.app.common.confidence}</th>
+                      <th className="px-3 py-2 font-medium">{t.app.common.spend}</th>
+                      <th className="px-3 py-2 font-medium">{c.timeLeft}</th>
                       <th className="px-4 py-2" />
                     </tr>
                   </thead>
@@ -207,7 +213,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
                           <p className="mt-1 max-w-sm text-2xs text-muted">{r.evaluation.summary}</p>
                         </td>
                         <td className="px-3 py-3 text-xs text-muted">
-                          {metricLabel(r.experiment.primaryMetric)} · {thresholdLabel(r.experiment.primaryMetric, r.experiment.successThreshold)}
+                          {metricLabel(r.experiment.primaryMetric, t)} · {thresholdLabel(r.experiment.primaryMetric, r.experiment.successThreshold, t, locale)}
                         </td>
                         <td className="px-3 py-3">
                           <EvaluationSignal evaluation={r.evaluation} metric={r.experiment.primaryMetric} />
@@ -216,14 +222,14 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
                           <ConfidenceBadge value={r.evaluation.confidence} />
                         </td>
                         <td className="px-3 py-3 text-xs tabular">
-                          {r.experiment.budget > 0 ? `${formatUsd(r.experiment.spend)} / ${formatUsd(r.experiment.budget)}` : "—"}
+                          {r.experiment.budget > 0 ? `${usd(r.experiment.spend)} / ${usd(r.experiment.budget)}` : "—"}
                         </td>
-                        <td className="px-3 py-3 text-xs tabular">{r.daysLeft}d</td>
+                        <td className="px-3 py-3 text-xs tabular">{fmt(t.app.common.days, { count: r.daysLeft })}</td>
                         <td className="px-4 py-3 text-right">
                           {ctx.isDemo ? (
-                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="simulate" label="Simulate to end" />
+                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="simulate" label={c.simulate} />
                           ) : (
-                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="evaluate" label="Evaluate" />
+                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="evaluate" label={c.evaluate} />
                           )}
                         </td>
                       </tr>
@@ -236,7 +242,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
 
           {data.mrrSeries.length > 0 && (
             <Panel className="px-4 py-4">
-              <PanelHeader className="px-0 pt-0" title="MRR, last 90 days" description="Markers show when each experiment started." />
+              <PanelHeader className="px-0 pt-0" title={c.mrrChart} description={c.mrrChartHint} />
               <AreaChart data={data.mrrSeries} markers={data.markers} height={180} />
             </Panel>
           )}
@@ -245,11 +251,11 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
         <aside className="min-w-0 space-y-5">
           <Panel>
             <div id="approvals" className="scroll-mt-20">
-              <PanelHeader title="Needs your decision" count={data.approvals.length} description="High-risk actions wait here. Hard budget limits apply even after approval." />
+              <PanelHeader title={c.decisions} count={data.approvals.length} description={c.decisionsHint} />
             </div>
             <div className="space-y-2.5 border-t border-line p-3">
               {data.approvals.length === 0 ? (
-                <p className="px-1 py-3 text-sm text-muted">Nothing waiting. The agent acts only within your autonomy settings.</p>
+                <p className="px-1 py-3 text-sm text-muted">{c.nothingWaiting}</p>
               ) : (
                 data.approvals.map((a) => (
                   <ApprovalCard
@@ -273,10 +279,10 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
           </Panel>
 
           <Panel>
-            <PanelHeader title="What we've learned" actions={<ButtonLink href={`${base}/learnings`} size="sm" variant="ghost">All</ButtonLink>} />
+            <PanelHeader title={c.learned} actions={<ButtonLink href={`${base}/learnings`} size="sm" variant="ghost">{t.app.common.all}</ButtonLink>} />
             {data.learnings.length === 0 && (
               <p className="border-t border-line px-4 py-4 text-sm text-muted">
-                Nothing learned yet. Every finished experiment writes a winner, loser or insight here, and the next recommendations use it.
+                {c.nothingLearned}
               </p>
             )}
             <ul className="divide-y divide-line border-t border-line">
@@ -284,14 +290,14 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
                 <li key={l.id} className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Badge tone={l.kind === "winner" ? "positive" : l.kind === "loser" ? "negative" : "neutral"}>
-                      {l.kind === "winner" ? "Winner" : l.kind === "loser" ? "Loser" : "Learning"}
+                      {l.kind === "winner" ? t.app.common.winner : l.kind === "loser" ? t.app.common.loser : t.app.common.learning}
                     </Badge>
                     {l.evidence[0] && (
                       <Link href={`${base}/experiments/${l.evidence[0].number}`} className="text-2xs text-muted tabular hover:text-ink">
                         {experimentKey(l.evidence[0].number)}
                       </Link>
                     )}
-                    <span className="ml-auto text-2xs text-subtle">{relativeTime(l.createdAt)}</span>
+                    <span className="ml-auto text-2xs text-subtle">{relativeTime(l.createdAt, new Date(), locale)}</span>
                   </div>
                   <p className="mt-1.5 text-sm text-ink">{l.statement}</p>
                   {l.metricLabel && <p className="mt-0.5 text-xs text-muted">{l.metricLabel}</p>}
@@ -302,12 +308,12 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
 
           {data.issues.length > 0 && (
             <Panel>
-              <PanelHeader title="Integration health" />
+              <PanelHeader title={c.health} />
               <ul className="space-y-2 border-t border-line p-3">
                 {data.issues.map((i) => (
                   <li key={i.provider}>
-                    <Notice tone="warning" title={i.name} action={<ButtonLink href={`${base}/integrations`} size="sm">Fix</ButtonLink>}>
-                      {i.detail}
+                    <Notice tone="warning" title={i.name} action={<ButtonLink href={`${base}/integrations`} size="sm">{c.fix}</ButtonLink>}>
+                      {translateServerText(i.detail, locale)}
                     </Notice>
                   </li>
                 ))}
@@ -316,7 +322,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
           )}
           {data.issues.length === 0 && (
             <p className="flex items-center gap-2 px-1 text-xs text-muted">
-              <PlugZap className="size-3.5" /> All connected integrations are healthy.
+              <PlugZap className="size-3.5" /> {c.healthy}
             </p>
           )}
         </aside>

@@ -40,6 +40,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { Dictionary } from "@/i18n/dictionaries";
+
+type NavCopy = Dictionary["marketing"]["nav"];
+export type NavItemId = keyof NavCopy["items"];
+export type NavColumnId = keyof NavCopy["columns"];
+export type NavMenuId = keyof NavCopy["menus"];
+
 export type Tone = "blue" | "tangerine" | "grass" | "lilac" | "sun" | "pink" | "lime";
 
 export const TONE_TILE: Record<Tone, string> = {
@@ -63,153 +70,147 @@ export const TONE_CARD: Record<Tone, string> = {
 };
 
 /** `$demo` resolves to the demo workspace when one exists. */
-export type NavItem = { label: string; desc?: string; href: string; icon: LucideIcon; tone: Tone; soon?: boolean };
+export type NavItem = { id: NavItemId; href: string; icon: LucideIcon; tone: Tone; soon?: boolean };
 export type NavMenu = {
-  id: string;
-  label: string;
-  columns: { title: string; items: NavItem[] }[];
-  featured: { kicker: string; title: string; href: string; tone: Tone; spot: "understand" | "decide" | "experiment" | "control" | "learn" };
+  id: NavMenuId;
+  columns: { id: NavColumnId; items: NavItem[] }[];
+  featured: { href: string; tone: Tone; spot: "understand" | "decide" | "experiment" | "control" | "learn" };
 };
 
 export const NAV: NavMenu[] = [
   {
     id: "product",
-    label: "Product",
     columns: [
       {
-        title: "Understand",
+        id: "understand",
         items: [
-          { label: "Product analysis", href: "/#uc-analysis", icon: ScanSearch, tone: "blue" },
-          { label: "ICP & positioning", href: "/#uc-icp", icon: Users, tone: "pink" },
-          { label: "Competitor map", href: "/#uc-competitors", icon: Swords, tone: "blue" },
+          { id: "productAnalysis", href: "/#uc-analysis", icon: ScanSearch, tone: "blue" },
+          { id: "icpPositioning", href: "/#uc-icp", icon: Users, tone: "pink" },
+          { id: "competitorMap", href: "/#uc-competitors", icon: Swords, tone: "blue" },
         ],
       },
       {
-        title: "Decide",
+        id: "decide",
         items: [
-          { label: "Channel strategy", href: "/#uc-strategy", icon: Radar, tone: "tangerine" },
-          { label: "Budget allocation", href: "/#uc-budget", icon: Wallet, tone: "sun" },
-          { label: "Goals & pace", href: "/#pillar-decide", icon: Target, tone: "tangerine" },
+          { id: "channelStrategy", href: "/#uc-strategy", icon: Radar, tone: "tangerine" },
+          { id: "budgetAllocation", href: "/#uc-budget", icon: Wallet, tone: "sun" },
+          { id: "goalsPace", href: "/#pillar-decide", icon: Target, tone: "tangerine" },
         ],
       },
       {
-        title: "Act",
+        id: "act",
         items: [
-          { label: "Kaya agent", href: "/#control", icon: Sparkles, tone: "lilac" },
-          { label: "Paid ads", href: "/#uc-ads", icon: Megaphone, tone: "pink" },
-          { label: "SEO pages", href: "/#uc-seo", icon: FileText, tone: "lilac" },
-          { label: "Community launches", href: "/#uc-community", icon: MessagesSquare, tone: "tangerine" },
-          { label: "Lifecycle email", href: "/#uc-email", icon: Mail, tone: "blue" },
+          { id: "kayaAgent", href: "/#control", icon: Sparkles, tone: "lilac" },
+          { id: "paidAds", href: "/#uc-ads", icon: Megaphone, tone: "pink" },
+          { id: "seoPages", href: "/#uc-seo", icon: FileText, tone: "lilac" },
+          { id: "communityLaunches", href: "/#uc-community", icon: MessagesSquare, tone: "tangerine" },
+          { id: "lifecycleEmail", href: "/#uc-email", icon: Mail, tone: "blue" },
         ],
       },
       {
-        title: "Measure",
+        id: "measure",
         items: [
-          { label: "Experiments", href: "/#uc-experiments", icon: FlaskConical, tone: "grass" },
-          { label: "Analytics", href: "/#uc-analytics", icon: ChartLine, tone: "grass" },
-          { label: "Learnings", href: "/#pillar-learn", icon: Brain, tone: "sun" },
-          { label: "Weekly brief", href: "/#uc-brief", icon: Newspaper, tone: "sun" },
+          { id: "experiments", href: "/#uc-experiments", icon: FlaskConical, tone: "grass" },
+          { id: "analytics", href: "/#uc-analytics", icon: ChartLine, tone: "grass" },
+          { id: "learnings", href: "/#pillar-learn", icon: Brain, tone: "sun" },
+          { id: "weeklyBrief", href: "/#uc-brief", icon: Newspaper, tone: "sun" },
         ],
       },
     ],
-    featured: { kicker: "Autopilot", title: "Let Kaya act on its own, inside guardrails you set", href: "/#control", tone: "lilac", spot: "control" },
+    featured: { href: "/#control", tone: "lilac", spot: "control" },
   },
   {
     id: "use-cases",
-    label: "Use cases",
     columns: [
       {
-        title: "Get customers",
+        id: "getCustomers",
         items: [
-          { label: "Your first 100 customers", desc: "From a URL to a plan and first experiments", href: "/start", icon: Sprout, tone: "grass" },
-          { label: "Launch on HN & Product Hunt", desc: "Drafts that respect each community", href: "/#uc-community", icon: Rocket, tone: "tangerine" },
-          { label: "Win comparison searches", desc: "Pages for “X alternative” intent", href: "/#uc-seo", icon: Search, tone: "blue" },
-          { label: "Scale paid search", desc: "Raise budgets only when CAC holds", href: "/#uc-ads", icon: TrendingUp, tone: "pink" },
+          { id: "yourFirst100Customers", href: "/use-cases/first-100-customers", icon: Sprout, tone: "grass" },
+          { id: "launchOnHnProductHunt", href: "/use-cases/launch-hn-product-hunt", icon: Rocket, tone: "tangerine" },
+          { id: "winComparisonSearches", href: "/use-cases/comparison-searches", icon: Search, tone: "blue" },
+          { id: "scalePaidSearch", href: "/use-cases/scale-paid-search", icon: TrendingUp, tone: "pink" },
         ],
       },
       {
-        title: "Grow what you have",
+        id: "growWhatYouHave",
         items: [
-          { label: "Spend a small budget well", desc: "Fund tests that can reach significance", href: "/#uc-budget", icon: Coins, tone: "sun" },
-          { label: "Turn trials into customers", desc: "Emails triggered by product events", href: "/#uc-email", icon: Repeat, tone: "lilac" },
-          { label: "Diagnose a signups drop", desc: "Find the cause before the next sprint", href: "/#uc-brief", icon: TrendingDown, tone: "tangerine" },
-          { label: "Know what drove revenue", desc: "Channel CAC with every formula shown", href: "/#uc-analytics", icon: ChartLine, tone: "grass" },
+          { id: "spendASmallBudgetWell", href: "/use-cases/small-budget", icon: Coins, tone: "sun" },
+          { id: "turnTrialsIntoCustomers", href: "/use-cases/turn-trials-into-customers", icon: Repeat, tone: "lilac" },
+          { id: "diagnoseASignupsDrop", href: "/use-cases/diagnose-signups-drop", icon: TrendingDown, tone: "tangerine" },
+          { id: "knowWhatDroveRevenue", href: "/use-cases/revenue-attribution", icon: ChartLine, tone: "grass" },
         ],
       },
     ],
-    featured: { kicker: "Demo workspace", title: "How Tickwarden lifted trial starts 31%", href: "$demo", tone: "grass", spot: "experiment" },
+    featured: { href: "/use-cases", tone: "grass", spot: "experiment" },
   },
   {
     id: "solutions",
-    label: "Solutions",
     columns: [
       {
-        title: "By stage",
+        id: "byStage",
         items: [
-          { label: "Pre-launch", href: "/pricing#plan-free", icon: Sprout, tone: "grass" },
-          { label: "First revenue", href: "/pricing#plan-launch", icon: Rocket, tone: "tangerine" },
-          { label: "Scaling", href: "/pricing#plan-growth", icon: TrendingUp, tone: "pink" },
+          { id: "preLaunch", href: "/solutions/pre-launch", icon: Sprout, tone: "grass" },
+          { id: "firstRevenue", href: "/solutions/first-revenue", icon: Rocket, tone: "tangerine" },
+          { id: "scaling", href: "/solutions/scaling", icon: TrendingUp, tone: "pink" },
         ],
       },
       {
-        title: "By product",
+        id: "byProduct",
         items: [
-          { label: "B2B SaaS", href: "/start", icon: Building2, tone: "blue" },
-          { label: "Developer tools", href: "$demo", icon: Code, tone: "lilac" },
-          { label: "AI apps", href: "/start", icon: Bot, tone: "sun" },
-          { label: "Mobile apps", href: "/start", icon: Smartphone, tone: "blue", soon: true },
+          { id: "b2bSaas", href: "/solutions/b2b-saas", icon: Building2, tone: "blue" },
+          { id: "developerTools", href: "/solutions/developer-tools", icon: Code, tone: "lilac" },
+          { id: "aiApps", href: "/solutions/ai-apps", icon: Bot, tone: "sun" },
+          { id: "mobileApps", href: "/solutions/mobile-apps", icon: Smartphone, tone: "blue" },
         ],
       },
       {
-        title: "By team",
+        id: "byTeam",
         items: [
-          { label: "Solo founders", href: "/pricing#plan-launch", icon: User, tone: "tangerine" },
-          { label: "Small teams", href: "/pricing#plan-growth", icon: Users, tone: "grass" },
-          { label: "Agencies", href: "/start", icon: Briefcase, tone: "lilac", soon: true },
+          { id: "soloFounders", href: "/solutions/solo-founders", icon: User, tone: "tangerine" },
+          { id: "smallTeams", href: "/solutions/small-teams", icon: Users, tone: "grass" },
+          { id: "agencies", href: "/solutions/agencies", icon: Briefcase, tone: "lilac" },
         ],
       },
     ],
-    featured: { kicker: "Pricing", title: "Start free. Pay as Kaya does more", href: "/pricing", tone: "blue", spot: "decide" },
+    featured: { href: "/solutions", tone: "blue", spot: "decide" },
   },
   {
     id: "resources",
-    label: "Resources",
     columns: [
       {
-        title: "Learn",
+        id: "learn",
         items: [
-          { label: "Growth playbooks", href: "/", icon: BookOpen, tone: "sun", soon: true },
-          { label: "Kaya Academy", href: "/", icon: GraduationCap, tone: "blue", soon: true },
-          { label: "Changelog", href: "/", icon: History, tone: "grass", soon: true },
-          { label: "Brand guidelines", href: "/brand", icon: Palette, tone: "pink" },
+          { id: "growthPlaybooks", href: "/", icon: BookOpen, tone: "sun", soon: true },
+          { id: "kayaAcademy", href: "/", icon: GraduationCap, tone: "blue", soon: true },
+          { id: "changelog", href: "/", icon: History, tone: "grass", soon: true },
+          { id: "brandGuidelines", href: "/brand", icon: Palette, tone: "pink" },
         ],
       },
       {
-        title: "Explore",
+        id: "explore",
         items: [
-          { label: "Demo workspace", href: "$demo", icon: CirclePlay, tone: "tangerine" },
-          { label: "How autonomy works", href: "/#control", icon: ShieldCheck, tone: "lilac" },
-          { label: "FAQ", href: "/#faq", icon: CircleHelp, tone: "blue" },
+          { id: "demoWorkspace", href: "$demo", icon: CirclePlay, tone: "tangerine" },
+          { id: "howAutonomyWorks", href: "/#control", icon: ShieldCheck, tone: "lilac" },
+          { id: "faq", href: "/#faq", icon: CircleHelp, tone: "blue" },
         ],
       },
     ],
-    featured: { kicker: "Learn", title: "Every result makes next month smarter", href: "/#pillar-learn", tone: "sun", spot: "learn" },
+    featured: { href: "/#pillar-learn", tone: "sun", spot: "learn" },
   },
   {
     id: "company",
-    label: "Company",
     columns: [
       {
-        title: "Kaya",
+        id: "kaya",
         items: [
-          { label: "About", href: "/about", icon: Info, tone: "blue" },
-          { label: "Careers", href: "/", icon: Heart, tone: "pink", soon: true },
-          { label: "Security & trust", href: "/#control", icon: ShieldCheck, tone: "lilac" },
-          { label: "Partners", href: "/", icon: Handshake, tone: "grass", soon: true },
+          { id: "about", href: "/about", icon: Info, tone: "blue" },
+          { id: "careers", href: "/", icon: Heart, tone: "pink", soon: true },
+          { id: "securityTrust", href: "/#control", icon: ShieldCheck, tone: "lilac" },
+          { id: "partners", href: "/", icon: Handshake, tone: "grass", soon: true },
         ],
       },
     ],
-    featured: { kicker: "Brand", title: "The Kaya identity: logo, palette, type and clay", href: "/brand", tone: "pink", spot: "understand" },
+    featured: { href: "/brand", tone: "pink", spot: "understand" },
   },
 ];
 

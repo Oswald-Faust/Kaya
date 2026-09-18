@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { BrandIcon, type BrandName } from "@/components/brand/brand-logos";
 import { cn } from "@/lib/cn";
-import { channelLabel } from "@/server/domain/channels";
+import { useI18n } from "@/i18n/client";
 import type { ExperimentOutcome, ExperimentStatus, RiskClass } from "@/server/domain/types";
 
 type Tone = "neutral" | "agent" | "positive" | "negative" | "warning" | "outline";
@@ -28,40 +31,38 @@ export function Badge({ tone = "neutral", children, className }: { tone?: Tone; 
   );
 }
 
-const STATUS: Record<ExperimentStatus, { label: string; tone: Tone; live?: boolean }> = {
-  idea: { label: "Idea", tone: "outline" },
-  proposed: { label: "Proposed", tone: "outline" },
-  awaiting_approval: { label: "Awaiting approval", tone: "warning" },
-  scheduled: { label: "Scheduled", tone: "neutral" },
-  running: { label: "Running", tone: "agent", live: true },
-  evaluating: { label: "Evaluating", tone: "agent" },
-  completed: { label: "Completed", tone: "neutral" },
-  archived: { label: "Archived", tone: "neutral" },
-  suppressed: { label: "Suppressed", tone: "neutral" },
+const STATUS: Record<ExperimentStatus, { tone: Tone; live?: boolean }> = {
+  idea: { tone: "outline" },
+  proposed: { tone: "outline" },
+  awaiting_approval: { tone: "warning" },
+  scheduled: { tone: "neutral" },
+  running: { tone: "agent", live: true },
+  evaluating: { tone: "agent" },
+  completed: { tone: "neutral" },
+  archived: { tone: "neutral" },
+  suppressed: { tone: "neutral" },
 };
 
-const OUTCOME: Record<ExperimentOutcome, { label: string; tone: Tone }> = {
-  winner: { label: "Winner", tone: "positive" },
-  loser: { label: "Loser", tone: "negative" },
-  inconclusive: { label: "Inconclusive", tone: "neutral" },
-};
+const OUTCOME: Record<ExperimentOutcome, Tone> = { winner: "positive", loser: "negative", inconclusive: "neutral" };
 
 export function StatusBadge({ status, outcome }: { status: ExperimentStatus; outcome?: ExperimentOutcome | null }) {
+  const { t } = useI18n();
   if (status === "completed" && outcome) {
-    const o = OUTCOME[outcome];
-    return <Badge tone={o.tone}>{o.label}</Badge>;
+    return <Badge tone={OUTCOME[outcome]}>{t.ui.outcome[outcome]}</Badge>;
   }
   const s = STATUS[status];
   return (
     <Badge tone={s.tone}>
       {s.live && <span className="size-1.5 rounded-full bg-agent animate-pulse-dot" aria-hidden />}
-      {s.label}
+      {t.ui.status[status]}
     </Badge>
   );
 }
 
 /** Confidence as a compact 5-segment meter plus the number. */
-export function ConfidenceBadge({ value, label = "confidence" }: { value: number; label?: string }) {
+export function ConfidenceBadge({ value, label: custom }: { value: number; label?: string }) {
+  const { t } = useI18n();
+  const label = custom ?? t.ui.confidence;
   const filled = Math.round(value * 5);
   const tone = value >= 0.75 ? "bg-ink" : value >= 0.5 ? "bg-muted" : "bg-subtle";
   return (
@@ -77,49 +78,51 @@ export function ConfidenceBadge({ value, label = "confidence" }: { value: number
   );
 }
 
+/** Channels that belong to a platform show that platform's logo. */
+const CHANNEL_BRAND: Record<string, BrandName> = {
+  google_search: "googleads",
+  reddit: "reddit",
+  hacker_news: "hackernews",
+  x_organic: "x",
+  linkedin: "linkedin",
+  meta_ads: "meta",
+  youtube_creators: "youtube",
+  tiktok: "tiktok",
+  product_hunt: "producthunt",
+  instagram: "instagram",
+  discord: "discord",
+};
+
+/** The rest are surfaces the founder owns, so they keep a letter. */
 const CHANNEL_GLYPH: Record<string, string> = {
-  google_search: "G",
   seo_content: "S",
-  reddit: "R",
-  hacker_news: "Y",
-  x_organic: "X",
-  linkedin: "in",
-  meta_ads: "M",
-  youtube_creators: "▶",
   email_lifecycle: "@",
-  tiktok: "T",
 };
 
 export function ChannelBadge({ channel, className }: { channel: string; className?: string }) {
+  const { t } = useI18n();
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted whitespace-nowrap", className)}>
-      <span
-        aria-hidden
-        className="grid size-4 place-items-center rounded-sm border border-line bg-surface text-[9px] font-semibold text-ink"
-      >
-        {CHANNEL_GLYPH[channel] ?? "·"}
+      <span aria-hidden className="grid size-4 shrink-0 place-items-center rounded-sm border border-line bg-surface text-[9px] font-semibold text-ink">
+        {CHANNEL_BRAND[channel] ? <BrandIcon brand={CHANNEL_BRAND[channel]} className="size-2.5" /> : (CHANNEL_GLYPH[channel] ?? "·")}
       </span>
-      {channelLabel(channel)}
+      {t.common.channels[channel] ?? channel}
     </span>
   );
 }
 
-const RISK: Record<RiskClass, { label: string; tone: Tone }> = {
-  R0: { label: "R0 Read", tone: "outline" },
-  R1: { label: "R1 Draft", tone: "outline" },
-  R2: { label: "R2 Publish", tone: "warning" },
-  R3: { label: "R3 Spend", tone: "warning" },
-  R4: { label: "R4 Sensitive", tone: "negative" },
-};
+const RISK: Record<RiskClass, Tone> = { R0: "outline", R1: "outline", R2: "warning", R3: "warning", R4: "negative" };
 
 export function RiskBadge({ risk }: { risk: RiskClass }) {
-  return <Badge tone={RISK[risk].tone}>{RISK[risk].label}</Badge>;
+  const { t } = useI18n();
+  return <Badge tone={RISK[risk]}>{t.ui.risk[risk]}</Badge>;
 }
 
 export function DemoBadge() {
+  const { t } = useI18n();
   return (
     <Badge tone="outline" className="border-dashed">
-      Demo data
+      {t.common.demoData}
     </Badge>
   );
 }

@@ -1,0 +1,47 @@
+import type { common as en } from "../en/common";
+
+export const common: typeof en = {
+  close: "Fermer",
+  cancel: "Annuler",
+  save: "Enregistrer",
+  saved: "Enregistré.",
+  back: "Retour",
+  next: "Suivant",
+  done: "Terminé",
+  copy: "Copier",
+  copied: "Copié",
+  tryAgain: "Réessayer",
+  loading: "Chargement",
+  demoData: "Données de démo",
+  logOut: "Se déconnecter",
+  logOutUser: "Déconnecter {email}",
+  somethingWentWrong: "Une erreur est survenue. Veuillez réessayer.",
+  notFound: {
+    title: "Page introuvable, ou pas à vous",
+    body: "Cette page n'existe pas, ou elle appartient à un espace de travail auquel vous n'avez pas accès.",
+    back: "Retour à votre espace de travail",
+  },
+  pageError: {
+    title: "Cette page n'a pas pu se charger",
+    body: "Aucune action n'a été effectuée. Si le problème persiste, la référence {ref} permet de le retrouver.",
+    inLogs: "dans les logs du serveur",
+  },
+  channels: {
+    google_search: "Google Search",
+    seo_content: "Pages SEO",
+    reddit: "Reddit",
+    hacker_news: "Hacker News",
+    x_organic: "X",
+    linkedin: "LinkedIn",
+    meta_ads: "Meta Ads",
+    youtube_creators: "Créateurs YouTube",
+    email_lifecycle: "Emails automatisés",
+    tiktok: "TikTok",
+    direct: "Direct",
+    website: "Site web",
+  },
+  language: {
+    label: "Langue",
+    switchTo: "Changer de langue",
+  },
+};

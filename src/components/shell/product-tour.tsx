@@ -26,6 +26,9 @@ import {
 import { ExperimentSpot, LearnSpot } from "@/components/brand/clay";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { fmt } from "@/i18n/format";
 
 /**
  * First-login product tour. A welcome modal, then a spotlight on each part of
@@ -36,132 +39,40 @@ import { cn } from "@/lib/cn";
 
 type Placement = "right" | "bottom";
 
+type StepId = keyof Dictionary["tour"]["steps"];
+
 interface TourStep {
-  target: string;
+  target: StepId;
   placement: Placement;
-  chapter: string;
-  title: string;
-  body: string;
   icon: ReactNode;
   tone: string;
-  bullets?: { icon: ReactNode; label: string; text: string }[];
+  bullets?: { icon: ReactNode; id: keyof Dictionary["tour"]["execution"]; label: keyof Dictionary["shell"]["nav"] }[];
 }
 
 const STEPS: TourStep[] = [
-  {
-    target: "search",
-    placement: "right",
-    chapter: "Navigate",
-    title: "Search or ask, from anywhere",
-    body: "Press ⌘K to jump to any page or experiment. Type a full question and it goes straight to the agent.",
-    icon: <Search />,
-    tone: "bg-stone text-ink",
-  },
-  {
-    target: "command-center",
-    placement: "right",
-    chapter: "Navigate",
-    title: "Command Center",
-    body: "Start your day here: progress toward your goal, the next best actions ranked by impact and confidence, and the experiments running right now.",
-    icon: <Gauge />,
-    tone: "bg-lime-soft text-lime-deep",
-  },
-  {
-    target: "agent",
-    placement: "right",
-    chapter: "Navigate",
-    title: "Agent",
-    body: "Give the agent a goal. It pulls context, shows its plan and calls tools inside your policy. Anything risky waits for your approval, and the badge counts what's waiting.",
-    icon: <Bot />,
-    tone: "bg-agent-soft text-agent",
-  },
-  {
-    target: "strategy",
-    placement: "right",
-    chapter: "Growth loop",
-    title: "Strategy",
-    body: "Built from what Kaya learned about your product and the goal you set. Each revision links to the evidence that changed it.",
-    icon: <Compass />,
-    tone: "bg-sun-soft text-sun-deep",
-  },
-  {
-    target: "experiments",
-    placement: "right",
-    chapter: "Growth loop",
-    title: "Experiments",
-    body: "The basic unit of growth: hypothesis, audience, channel, budget, metric and success threshold. The badge shows how many are running.",
-    icon: <FlaskConical />,
-    tone: "bg-tangerine-soft text-tangerine-deep",
-  },
-  {
-    target: "learnings",
-    placement: "right",
-    chapter: "Growth loop",
-    title: "Learnings",
-    body: "Every finished experiment writes a learning here: winner, loser or inconclusive. The next recommendations build on them.",
-    icon: <BookOpen />,
-    tone: "bg-grass-soft text-grass-deep",
-  },
-  {
-    target: "analytics",
-    placement: "right",
-    chapter: "Growth loop",
-    title: "Analytics",
-    body: "MRR, signups and customers from your revenue and analytics tools. Kaya judges experiments on business results, not impressions.",
-    icon: <Activity />,
-    tone: "bg-blue-soft text-blue-deep",
-  },
-  {
-    target: "memory",
-    placement: "right",
-    chapter: "Growth loop",
-    title: "Business memory",
-    body: "Everything the agent knows about your business, with its source and confidence. Only facts you've confirmed drive decisions.",
-    icon: <Brain />,
-    tone: "bg-lilac-soft text-lilac-deep",
-  },
+  { target: "search", placement: "right", icon: <Search />, tone: "bg-stone text-ink" },
+  { target: "command-center", placement: "right", icon: <Gauge />, tone: "bg-lime-soft text-lime-deep" },
+  { target: "agent", placement: "right", icon: <Bot />, tone: "bg-agent-soft text-agent" },
+  { target: "strategy", placement: "right", icon: <Compass />, tone: "bg-sun-soft text-sun-deep" },
+  { target: "experiments", placement: "right", icon: <FlaskConical />, tone: "bg-tangerine-soft text-tangerine-deep" },
+  { target: "learnings", placement: "right", icon: <BookOpen />, tone: "bg-grass-soft text-grass-deep" },
+  { target: "analytics", placement: "right", icon: <Activity />, tone: "bg-blue-soft text-blue-deep" },
+  { target: "memory", placement: "right", icon: <Brain />, tone: "bg-lilac-soft text-lilac-deep" },
   {
     target: "execution",
     placement: "right",
-    chapter: "Execution",
-    title: "Where experiments go live",
-    body: "Each channel exists to run an experiment, so every dollar and every asset can be judged against its threshold.",
     icon: <Megaphone />,
     tone: "bg-pink-soft text-pink-deep",
     bullets: [
-      { icon: <Megaphone />, label: "Campaigns", text: "Paid launches across channels, with their spend." },
-      { icon: <FileText />, label: "Content", text: "Ad copy, landing pages and emails drafted by the agent." },
-      { icon: <Search />, label: "SEO", text: "From search queries to pages, rankings and conversions." },
-      { icon: <Users />, label: "Creators", text: "Discovery, outreach, deals and the revenue they bring." },
+      { icon: <Megaphone />, id: "campaigns", label: "campaigns" },
+      { icon: <FileText />, id: "content", label: "content" },
+      { icon: <Search />, id: "seo", label: "seo" },
+      { icon: <Users />, id: "creators", label: "creators" },
     ],
   },
-  {
-    target: "integrations",
-    placement: "right",
-    chapter: "System",
-    title: "Integrations",
-    body: "Connect Stripe, analytics and ad accounts. The agent asks for capabilities, the connections provide them, and every change they make is recorded.",
-    icon: <Plug />,
-    tone: "bg-stone text-ink",
-  },
-  {
-    target: "settings",
-    placement: "right",
-    chapter: "System",
-    title: "Settings",
-    body: "Rename your workspace, invite your team within your plan's seats, set how much autonomy the agent gets and its spending guardrails, and manage billing.",
-    icon: <Settings />,
-    tone: "bg-stone text-ink",
-  },
-  {
-    target: "topbar",
-    placement: "bottom",
-    chapter: "Stay on track",
-    title: "Your goal, always in view",
-    body: "The top bar tracks progress toward your goal, shows where the growth loop stands and which autonomy mode the agent is in.",
-    icon: <Target />,
-    tone: "bg-lime-soft text-lime-deep",
-  },
+  { target: "integrations", placement: "right", icon: <Plug />, tone: "bg-stone text-ink" },
+  { target: "settings", placement: "right", icon: <Settings />, tone: "bg-stone text-ink" },
+  { target: "topbar", placement: "bottom", icon: <Target />, tone: "bg-lime-soft text-lime-deep" },
 ];
 
 type Phase = "welcome" | "steps" | "done";
@@ -264,35 +175,39 @@ function Backdrop() {
 }
 
 function WelcomeCard({ firstName, onStart, onSkip }: { firstName: string; onStart: () => void; onSkip: () => void }) {
+  const { t } = useI18n();
+  const w = t.tour.welcome;
   return (
-    <CenteredDialog label="Welcome to Kaya" onDismiss={onSkip}>
+    <CenteredDialog label={w.label} onDismiss={onSkip}>
       <div className="relative overflow-hidden bg-cream" data-inview="true">
         <ExperimentSpot className="mx-auto -mb-6 h-56 w-auto" />
       </div>
       <div className="px-6 pt-5 pb-6 text-center">
-        <p className="text-xs font-medium text-agent">Your workspace is ready</p>
-        <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">Welcome to Kaya{firstName ? `, ${firstName}` : ""}</h2>
+        <p className="text-xs font-medium text-agent">{w.eyebrow}</p>
+        <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{firstName ? fmt(w.titleNamed, { name: firstName }) : w.title}</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
-          Kaya runs your growth loop: strategy, experiments, learnings, then the next move. Take a minute to see what each part of your workspace does.
+          {w.body}
         </p>
         <div className="mt-5 flex flex-col-reverse items-center justify-center gap-2 sm:flex-row">
           <button type="button" onClick={onSkip} className={buttonClass("ghost", "lg", "w-full sm:w-auto")}>
-            Skip for now
+            {w.skip}
           </button>
           <AutoFocusButton onClick={onStart} className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
-            Show me around
+            {w.start}
             <ArrowRight className="size-4" />
           </AutoFocusButton>
         </div>
-        <p className="mt-4 text-2xs text-subtle">{STEPS.length} short steps · about a minute</p>
+        <p className="mt-4 text-2xs text-subtle">{fmt(w.meta, { count: STEPS.length })}</p>
       </div>
     </CenteredDialog>
   );
 }
 
 function DoneCard({ slug, onBack, onClose }: { slug: string; onBack: () => void; onClose: () => void }) {
+  const { t } = useI18n();
+  const d = t.tour.done;
   return (
-    <CenteredDialog label="Tour complete" onDismiss={onClose}>
+    <CenteredDialog label={d.label} onDismiss={onClose}>
       <div className="relative overflow-hidden bg-lime-soft" data-inview="true">
         <LearnSpot className="mx-auto -mb-6 h-56 w-auto" />
       </div>
@@ -300,21 +215,21 @@ function DoneCard({ slug, onBack, onClose }: { slug: string; onBack: () => void;
         <span className="mx-auto grid size-8 place-items-center rounded-full bg-positive text-white">
           <Check className="size-4" />
         </span>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">You&apos;re all set</h2>
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">{d.title}</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
-          The fastest way to start is to give the agent a goal. You can replay this tour anytime from the sidebar or with ⌘K.
+          {d.body}
         </p>
         <div className="mt-5 flex flex-col-reverse items-center justify-center gap-2 sm:flex-row">
-          <button type="button" onClick={onBack} aria-label="Previous step" className={buttonClass("ghost", "lg", "w-full sm:w-auto sm:px-2.5")}>
+          <button type="button" onClick={onBack} aria-label={t.tour.previous} className={buttonClass("ghost", "lg", "w-full sm:w-auto sm:px-2.5")}>
             <ArrowLeft className="size-4" />
-            <span className="sm:hidden">Back</span>
+            <span className="sm:hidden">{t.common.back}</span>
           </button>
           <button type="button" onClick={onClose} className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
-            Explore on my own
+            {d.explore}
           </button>
           <Link href={`/w/${slug}/agent`} onClick={onClose} className={buttonClass("agent", "lg", "w-full sm:w-auto")}>
             <Bot className="size-4" />
-            Give the agent a goal
+            {d.goal}
           </Link>
         </div>
       </div>
@@ -324,6 +239,7 @@ function DoneCard({ slug, onBack, onClose }: { slug: string; onBack: () => void;
 
 function CenteredDialog({ label, onDismiss, children }: { label: string; onDismiss: () => void; children: ReactNode }) {
   const reduce = useReducedMotion();
+  const { t } = useI18n();
   return (
     <>
       <Backdrop />
@@ -337,7 +253,7 @@ function CenteredDialog({ label, onDismiss, children }: { label: string; onDismi
           transition={{ duration: 0.32, ease: [0.2, 0.7, 0.2, 1] }}
           className="relative w-full max-w-md overflow-hidden rounded-lg bg-surface shadow-pop"
         >
-          <button type="button" onClick={onDismiss} aria-label="Close tour" className="absolute top-3 right-3 z-10 grid size-7 place-items-center rounded-md bg-surface/80 text-muted backdrop-blur-sm hover:text-ink">
+          <button type="button" onClick={onDismiss} aria-label={t.tour.close} className="absolute top-3 right-3 z-10 grid size-7 place-items-center rounded-md bg-surface/80 text-muted backdrop-blur-sm hover:text-ink">
             <X className="size-4" />
           </button>
           {children}
@@ -434,6 +350,8 @@ function StepCard({
   arrow?: number;
   placement: Placement;
 }) {
+  const { t } = useI18n();
+  const copy = t.tour.steps[step.target];
   const last = index === STEPS.length - 1;
   return (
     <div
@@ -455,26 +373,26 @@ function StepCard({
         <div className="flex items-center gap-2.5">
           <span className={cn("grid size-8 shrink-0 place-items-center rounded-md [&_svg]:size-4", step.tone)}>{step.icon}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-2xs font-medium text-subtle">{step.chapter}</p>
+            <p className="text-2xs font-medium text-subtle">{copy.chapter}</p>
             <h3 id="tour-step-title" className="truncate text-lg font-semibold tracking-tight text-ink">
-              {step.title}
+              {copy.title}
             </h3>
           </div>
-          <button type="button" onClick={onSkip} aria-label="Close tour" className="-mt-5 -mr-1.5 grid size-7 place-items-center rounded-md text-subtle hover:bg-sunken hover:text-ink">
+          <button type="button" onClick={onSkip} aria-label={t.tour.close} className="-mt-5 -mr-1.5 grid size-7 place-items-center rounded-md text-subtle hover:bg-sunken hover:text-ink">
             <X className="size-3.5" />
           </button>
         </div>
         <p id="tour-step-body" className="mt-3 text-sm text-muted">
-          {step.body}
+          {copy.body}
         </p>
         {step.bullets && (
           <ul className="mt-3 flex flex-col gap-2 rounded-md bg-raised p-2.5">
             {step.bullets.map((b) => (
-              <li key={b.label} className="flex gap-2.5 text-xs">
+              <li key={b.id} className="flex gap-2.5 text-xs">
                 <span className="mt-px text-subtle [&_svg]:size-3.5">{b.icon}</span>
                 <span>
-                  <span className="font-medium text-ink">{b.label}</span>
-                  <span className="text-muted"> · {b.text}</span>
+                  <span className="font-medium text-ink">{t.shell.nav[b.label]}</span>
+                  <span className="text-muted"> · {t.tour.execution[b.id]}</span>
                 </span>
               </li>
             ))}
@@ -484,7 +402,7 @@ function StepCard({
       <div className="flex items-center gap-2 border-t border-line px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <span className="text-2xs text-subtle tabular">
-            {index + 1} of {STEPS.length}
+            {fmt(t.tour.stepOf, { index: index + 1, total: STEPS.length })}
           </span>
           <div className="flex gap-0.5" aria-hidden>
             {STEPS.map((s, i) => (
@@ -493,13 +411,13 @@ function StepCard({
           </div>
         </div>
         <button type="button" onClick={onSkip} className={buttonClass("ghost", "sm", "hidden sm:inline-flex")}>
-          Skip tour
+          {t.tour.skipTour}
         </button>
-        <button type="button" onClick={onBack} aria-label="Previous step" className={buttonClass("secondary", "sm", "px-2")}>
+        <button type="button" onClick={onBack} aria-label={t.tour.previous} className={buttonClass("secondary", "sm", "px-2")}>
           <ArrowLeft className="size-3.5" />
         </button>
         <AutoFocusButton key={step.target} onClick={onNext} className={buttonClass("primary", "sm")}>
-          {last ? "Finish" : "Next"}
+          {last ? t.tour.finish : t.common.next}
           {last ? <Check className="size-3.5" /> : <ArrowRight className="size-3.5" />}
         </AutoFocusButton>
       </div>

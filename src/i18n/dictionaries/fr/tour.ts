@@ -1,0 +1,46 @@
+import type { tour as en } from "../en/tour";
+
+export const tour: typeof en = {
+  welcome: {
+    label: "Bienvenue sur Kaya",
+    eyebrow: "Votre espace est prêt",
+    title: "Bienvenue sur Kaya",
+    titleNamed: "Bienvenue sur Kaya, {name}",
+    body: "Kaya fait tourner votre boucle de croissance : stratégie, expériences, apprentissages, puis la prochaine action. Prenez une minute pour découvrir chaque partie de votre espace.",
+    skip: "Plus tard",
+    start: "Faire la visite",
+    meta: "{count} courtes étapes · environ une minute",
+  },
+  done: {
+    label: "Visite terminée",
+    title: "Tout est prêt",
+    body: "Le plus rapide pour démarrer : donner un objectif à l'agent. Vous pouvez relancer cette visite à tout moment depuis la barre latérale ou avec ⌘K.",
+    explore: "Explorer par moi-même",
+    goal: "Donner un objectif à l'agent",
+  },
+  close: "Fermer la visite",
+  previous: "Étape précédente",
+  skipTour: "Passer la visite",
+  finish: "Terminer",
+  stepOf: "{index} sur {total}",
+  steps: {
+    search: { chapter: "Naviguer", title: "Chercher ou demander, partout", body: "Appuyez sur ⌘K pour aller à n'importe quelle page ou expérience. Tapez une question complète et elle part directement à l'agent." },
+    "command-center": { chapter: "Naviguer", title: "Centre de pilotage", body: "Commencez votre journée ici : progression vers votre objectif, prochaines actions classées par impact et confiance, et expériences en cours." },
+    agent: { chapter: "Naviguer", title: "Agent", body: "Donnez un objectif à l'agent. Il rassemble le contexte, montre son plan et utilise ses outils dans le cadre de vos règles. Tout ce qui est risqué attend votre approbation, et le badge compte ce qui est en attente." },
+    strategy: { chapter: "Boucle de croissance", title: "Stratégie", body: "Construite à partir de ce que Kaya a appris sur votre produit et de l'objectif que vous avez fixé. Chaque révision est liée aux preuves qui l'ont motivée." },
+    experiments: { chapter: "Boucle de croissance", title: "Expériences", body: "L'unité de base de la croissance : hypothèse, audience, canal, budget, métrique et seuil de réussite. Le badge indique combien sont en cours." },
+    learnings: { chapter: "Boucle de croissance", title: "Apprentissages", body: "Chaque expérience terminée écrit un apprentissage ici : gagnante, perdante ou non concluante. Les recommandations suivantes s'appuient dessus." },
+    analytics: { chapter: "Boucle de croissance", title: "Analytique", body: "MRR, inscriptions et clients issus de vos outils de revenus et d'analytique. Kaya juge les expériences sur les résultats business, pas sur les impressions." },
+    memory: { chapter: "Boucle de croissance", title: "Mémoire business", body: "Tout ce que l'agent sait de votre activité, avec sa source et son niveau de confiance. Seuls les faits que vous avez confirmés guident les décisions." },
+    execution: { chapter: "Exécution", title: "Là où les expériences prennent vie", body: "Chaque canal existe pour mener une expérience : chaque dollar et chaque contenu peut être jugé par rapport à son seuil." },
+    integrations: { chapter: "Système", title: "Intégrations", body: "Connectez Stripe, vos outils d'analytique et vos comptes publicitaires. L'agent demande des capacités, les connexions les fournissent, et chaque modification est enregistrée." },
+    settings: { chapter: "Système", title: "Paramètres", body: "Renommez votre espace, invitez votre équipe selon les sièges de votre plan, choisissez votre langue, réglez l'autonomie de l'agent et gérez la facturation." },
+    topbar: { chapter: "Garder le cap", title: "Votre objectif, toujours visible", body: "La barre du haut suit la progression vers votre objectif, montre où en est la boucle de croissance et dans quel mode d'autonomie se trouve l'agent." },
+  },
+  execution: {
+    campaigns: "Lancements payants sur tous les canaux, avec leurs dépenses.",
+    content: "Annonces, landing pages et emails rédigés par l'agent.",
+    seo: "Des requêtes aux pages, positions et conversions.",
+    creators: "Repérage, prise de contact, accords et revenus générés.",
+  },
+};

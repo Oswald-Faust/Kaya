@@ -7,13 +7,11 @@ import { saveGoalAction, type FormState } from "@/app/(onboarding)/start/actions
 import { Spinner } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { BUDGET_BANDS, GOAL_TEMPLATES, goalTitle } from "@/server/domain/strategy/goals";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { formatDate, formatUsd } from "@/lib/format";
 
-const DEADLINES = [
-  { days: 30, label: "30 days" },
-  { days: 90, label: "90 days" },
-  { days: 180, label: "6 months" },
-  { days: 365, label: "12 months" },
-];
+const DEADLINES = [30, 90, 180, 365];
 
 interface Initial {
   template: string;
@@ -24,6 +22,8 @@ interface Initial {
 }
 
 export function GoalForm({ slug, initial, today }: { slug: string; initial: Initial | null; today: string }) {
+  const { t, locale } = useI18n();
+  const g = t.onboarding.goal;
   const [state, action] = useActionState<FormState, FormData>(saveGoalAction.bind(null, slug), { error: null });
   const [templateId, setTemplateId] = useState(initial?.template ?? "first_customers");
   const [baseline, setBaseline] = useState(initial?.baseline !== null && initial?.baseline !== undefined ? String(initial.template === "trial_conversion" ? initial.baseline * 100 : initial.baseline) : "");
@@ -39,8 +39,9 @@ export function GoalForm({ slug, initial, today }: { slug: string; initial: Init
   const suffix = pct ? "%" : "";
   const n = (v: string) => (v.trim() === "" ? null : Number(v) / (pct ? 100 : 1));
   const budget = BUDGET_BANDS.find((b) => b.id === band)?.monthly ?? (customBudget ? Number(customBudget) : null);
-  const title = goalTitle(template, n(baseline) ?? template.baseline, n(target) ?? template.target, customText);
-  const byDate = new Date(Date.parse(`${today}T00:00:00Z`) + deadline * 86_400_000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const title = goalTitle(template, n(baseline) ?? template.baseline, n(target) ?? template.target, customText, locale);
+  const byDate = formatDate(new Date(Date.parse(`${today}T00:00:00Z`) + deadline * 86_400_000), { month: "long", day: "numeric", year: "numeric" }, locale);
+  const usd = (v: number) => formatUsd(v, {}, locale);
 
   return (
     <form action={action} className="mt-6 space-y-8">
@@ -49,7 +50,7 @@ export function GoalForm({ slug, initial, today }: { slug: string; initial: Init
       <input type="hidden" name="deadlineDays" value={deadline} />
 
       <fieldset>
-        <legend className="text-sm font-semibold text-ink">Outcome</legend>
+        <legend className="text-sm font-semibold text-ink">{g.outcome}</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup">
           {GOAL_TEMPLATES.map((t) => {
             const active = t.id === templateId;
@@ -73,8 +74,8 @@ export function GoalForm({ slug, initial, today }: { slug: string; initial: Init
                   {active && <span className="size-1.5 rounded-full bg-ink" />}
                 </span>
                 <span>
-                  <span className="block text-sm font-medium text-ink">{t.label}</span>
-                  <span className="block text-xs text-muted">{t.description}</span>
+                  <span className="block text-sm font-medium text-ink">{g.templates[t.id]?.label ?? t.label}</span>
+                  <span className="block text-xs text-muted">{g.templates[t.id]?.description ?? t.description}</span>
                 </span>
               </button>
             );
@@ -84,17 +85,17 @@ export function GoalForm({ slug, initial, today }: { slug: string; initial: Init
         {(template.asksBaseline || template.asksTarget || template.id === "custom" || template.id === "new_market") && (
           <div className="mt-3 grid gap-3 rounded-lg border border-line bg-surface p-4 sm:grid-cols-2">
             {template.asksBaseline && (
-              <NumberField label={template.metric === "mrr" ? "MRR today" : template.metric === "cac" ? "CAC today" : pct ? "Conversion today" : "Today"} name="baseline" value={baseline} onChange={setBaseline} prefix={prefix} suffix={suffix} hint="Leave empty if you don't know. We'll measure it." />
+              <NumberField label={template.metric === "mrr" ? g.mrrToday : template.metric === "cac" ? g.cacToday : pct ? g.conversionToday : g.today} name="baseline" value={baseline} onChange={setBaseline} prefix={prefix} suffix={suffix} hint={g.baselineHint} />
             )}
-            {template.asksTarget && <NumberField label="Target" name="target" value={target} onChange={setTarget} prefix={prefix} suffix={suffix} />}
+            {template.asksTarget && <NumberField label={g.target} name="target" value={target} onChange={setTarget} prefix={prefix} suffix={suffix} />}
             {(template.id === "custom" || template.id === "new_market") && (
               <label className="block sm:col-span-2">
-                <span className="text-xs font-medium text-muted">{template.id === "custom" ? "Describe the goal" : "Which market?"}</span>
+                <span className="text-xs font-medium text-muted">{template.id === "custom" ? g.describeGoal : g.whichMarket}</span>
                 <input
                   name="customText"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
-                  placeholder={template.id === "custom" ? "e.g. Get 5 agencies on the annual plan" : "e.g. Germany, or HR teams"}
+                  placeholder={template.id === "custom" ? g.customPlaceholder : g.marketPlaceholder}
                   className="mt-1 h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-agent"
                 />
               </label>
@@ -104,29 +105,29 @@ export function GoalForm({ slug, initial, today }: { slug: string; initial: Init
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-semibold text-ink">By when</legend>
-        <Chips options={DEADLINES.map((d) => ({ id: String(d.days), label: d.label }))} value={String(deadline)} onChange={(v) => setDeadline(Number(v))} />
+        <legend className="text-sm font-semibold text-ink">{g.byWhen}</legend>
+        <Chips options={DEADLINES.map((d) => ({ id: String(d), label: g.deadlines[String(d)] }))} value={String(deadline)} onChange={(v) => setDeadline(Number(v))} />
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-semibold text-ink">Monthly marketing budget</legend>
-        <p className="mt-0.5 text-xs text-muted">Enforced in code: daily spend caps and per-experiment limits are derived from it, whatever the agent recommends.</p>
-        <Chips options={BUDGET_BANDS.map((b) => ({ id: b.id, label: b.label }))} value={band} onChange={setBand} />
+        <legend className="text-sm font-semibold text-ink">{g.budget}</legend>
+        <p className="mt-0.5 text-xs text-muted">{g.budgetHint}</p>
+        <Chips options={BUDGET_BANDS.map((b) => ({ id: b.id, label: g.bands[b.id] ?? b.label }))} value={band} onChange={setBand} />
         {band === "custom" && (
           <div className="mt-3 max-w-xs">
-            <NumberField label="Budget per month" name="customBudget" value={customBudget} onChange={setCustomBudget} prefix="$" />
+            <NumberField label={g.budgetPerMonth} name="customBudget" value={customBudget} onChange={setCustomBudget} prefix="$" />
           </div>
         )}
       </fieldset>
 
       <div className="rounded-lg border border-line bg-surface p-4">
-        <p className="text-2xs font-medium text-subtle">Your goal</p>
+        <p className="text-2xs font-medium text-subtle">{g.yourGoal}</p>
         <p className="mt-1 text-lg font-semibold tracking-tight text-ink">
-          {title} by {byDate}
+          {fmt(g.titleBy, { title, date: byDate })}
         </p>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
           <ShieldCheck className="size-4 text-positive" />
-          {budget === null ? "Enter a budget." : budget === 0 ? "Organic only: the agent can't spend money." : `Up to $${budget.toLocaleString("en-US")}/month, max $${Math.round(budget / 20)}/day, max $${Math.round(budget * 0.4)} per experiment.`}
+          {budget === null ? g.enterBudget : budget === 0 ? g.organicOnly : fmt(g.limits, { budget: usd(budget), daily: usd(Math.round(budget / 20)), experiment: usd(Math.round(budget * 0.4)) })}
         </p>
       </div>
 
@@ -177,10 +178,11 @@ function NumberField({ label, name, value, onChange, prefix, suffix, hint }: { l
 
 function Submit() {
   const { pending } = useFormStatus();
+  const { t } = useI18n();
   return (
     <button type="submit" disabled={pending} className="inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-ink-hover disabled:opacity-70">
       {pending && <Spinner />}
-      Continue to data <ArrowRight className="size-4" />
+      {t.onboarding.goal.continue} <ArrowRight className="size-4" />
     </button>
   );
 }

@@ -1,30 +1,14 @@
+"use client";
+
 import { cn } from "@/lib/cn";
-import { formatPct, formatUsd } from "@/lib/format";
 import type { Evaluation } from "@/server/domain/experiments/evaluation";
-
-const METRIC_LABEL: Record<string, string> = {
-  signup_rate: "Signup rate",
-  activation_rate: "Activation rate",
-  trial_to_paid: "Trial → paid",
-  ctr: "CTR",
-  cac: "CAC",
-};
-
-export function metricLabel(metric: string): string {
-  return METRIC_LABEL[metric] ?? metric;
-}
-
-export function formatMetricValue(metric: string, value: number | null): string {
-  if (value === null) return "—";
-  return metric === "cac" ? formatUsd(value) : formatPct(value);
-}
-
-export function thresholdLabel(metric: string, threshold: number): string {
-  return metric === "cac" ? `< ${formatUsd(threshold)}` : `+${Math.round(threshold * 100)}% lift`;
-}
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { formatMetricValue } from "./experiment-format";
 
 /** Visual verdict of a live evaluation: where the result sits relative to its success threshold. */
 export function EvaluationSignal({ evaluation, metric }: { evaluation: Evaluation; metric: string }) {
+  const { t, locale } = useI18n();
   const tone =
     evaluation.decision === "winner"
       ? "text-positive"
@@ -33,20 +17,20 @@ export function EvaluationSignal({ evaluation, metric }: { evaluation: Evaluatio
         : evaluation.lift !== null && evaluation.lift > 0
           ? "text-ink"
           : "text-muted";
-  const liftText =
-    evaluation.lift === null ? "—" : `${evaluation.lift >= 0 ? "+" : "−"}${Math.abs(Math.round(evaluation.lift * 100))}%`;
+  const liftText = evaluation.lift === null ? "—" : `${evaluation.lift >= 0 ? "+" : "−"}${Math.abs(Math.round(evaluation.lift * 100))}%`;
   return (
     <span className={cn("inline-flex items-baseline gap-1.5 tabular", tone)}>
-      <span className="text-sm font-semibold">{formatMetricValue(metric, evaluation.observedValue)}</span>
-      <span className="text-2xs">{metric === "cac" ? `${liftText} vs target` : liftText}</span>
+      <span className="text-sm font-semibold">{formatMetricValue(metric, evaluation.observedValue, locale)}</span>
+      <span className="text-2xs">{metric === "cac" ? fmt(t.app.metrics.vsTarget, { lift: liftText }) : liftText}</span>
     </span>
   );
 }
 
 /** 0–100 score as a thin bar with the number, for ranked queues. */
 export function ScoreBar({ score }: { score: number }) {
+  const { t } = useI18n();
   return (
-    <span className="inline-flex items-center gap-2" title={`Priority score ${score}/100`}>
+    <span className="inline-flex items-center gap-2" title={fmt(t.app.metrics.priority, { score })}>
       <span className="h-1 w-12 overflow-hidden rounded-full bg-sunken">
         <span className="block h-full rounded-full bg-ink" style={{ width: `${score}%` }} />
       </span>
@@ -56,8 +40,9 @@ export function ScoreBar({ score }: { score: number }) {
 }
 
 export function EffortDots({ effort }: { effort: number }) {
+  const { t } = useI18n();
   return (
-    <span className="inline-flex gap-0.5" title={`Effort ${effort}/5`} aria-label={`Effort ${effort} of 5`}>
+    <span className="inline-flex gap-0.5" title={fmt(t.app.metrics.effort, { effort })} aria-label={fmt(t.app.metrics.effortOf, { effort })}>
       {Array.from({ length: 5 }, (_, i) => (
         <span key={i} className={cn("size-1.5 rounded-full", i < effort ? "bg-muted" : "bg-line")} />
       ))}

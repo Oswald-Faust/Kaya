@@ -8,6 +8,8 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ProductTour } from "./product-tour";
 import { Sidebar } from "./sidebar";
+import { Assistant, type AssistantContext } from "./assistant";
+import { useI18n } from "@/i18n/client";
 
 export interface PaletteExperiment {
   key: string;
@@ -16,9 +18,11 @@ export interface PaletteExperiment {
 }
 
 export function AppShell({
+  assistant,
   slug,
   switcher,
   topBar,
+  billing,
   pendingApprovals,
   running,
   experiments,
@@ -28,13 +32,16 @@ export function AppShell({
   slug: string;
   switcher: ReactNode;
   topBar: ReactNode;
+  billing?: ReactNode;
   pendingApprovals: number;
   running: number;
   experiments: PaletteExperiment[];
   /** `autoStart` opens the tour on first login; `persist` saves completion for signed-in users. */
   tour: { autoStart: boolean; persist: boolean; firstName: string };
+  assistant: AssistantContext;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(tour.autoStart);
@@ -62,7 +69,7 @@ export function AppShell({
   }, []);
 
   const sidebar = (
-    <Sidebar slug={slug} switcher={switcher} pendingApprovals={pendingApprovals} running={running} onOpenPalette={() => setPaletteOpen(true)} onStartTour={startTour} />
+    <Sidebar slug={slug} switcher={switcher} billing={billing} pendingApprovals={pendingApprovals} running={running} onOpenPalette={() => setPaletteOpen(true)} onStartTour={startTour} />
   );
 
   return (
@@ -70,8 +77,8 @@ export function AppShell({
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-line bg-canvas lg:block">{sidebar}</aside>
 
       {navOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
-          <button type="button" aria-label="Close navigation" className="absolute inset-0 bg-ink/30" onClick={() => setNavOpen(false)} />
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t.shell.nav.navigation}>
+          <button type="button" aria-label={t.shell.nav.closeNavigation} className="absolute inset-0 bg-ink/30" onClick={() => setNavOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-64 border-r border-line bg-canvas" onClick={(e) => (e.target as HTMLElement).closest("a") && setNavOpen(false)}>
             {sidebar}
           </aside>
@@ -80,7 +87,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header data-tour="topbar" className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-canvas/95 px-3 backdrop-blur-sm sm:px-5">
-          <button type="button" className="grid size-8 place-items-center rounded-md text-muted hover:bg-sunken lg:hidden" aria-label="Open navigation" onClick={() => setNavOpen(true)}>
+          <button type="button" className="grid size-8 place-items-center rounded-md text-muted hover:bg-sunken lg:hidden" aria-label={t.shell.nav.openNavigation} onClick={() => setNavOpen(true)}>
             <Menu className="size-4" />
           </button>
           {topBar}
@@ -90,6 +97,7 @@ export function AppShell({
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} slug={slug} experiments={experiments} onStartTour={startTour} />
       <ProductTour open={tourOpen} slug={slug} firstName={tour.firstName} onClose={closeTour} />
+      {!tourOpen && <Assistant slug={slug} context={assistant} />}
     </div>
   );
 }
@@ -108,6 +116,9 @@ function CommandPalette({
   onStartTour: () => void;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const n = t.shell.nav;
+  const p = t.shell.palette;
   const [query, setQuery] = useState("");
   const base = `/w/${slug}`;
   const go = (href: string) => {
@@ -117,52 +128,52 @@ function CommandPalette({
   };
 
   const pages: [string, string][] = [
-    ["Command Center", base],
-    ["Agent", `${base}/agent`],
-    ["Strategy", `${base}/strategy`],
-    ["Experiments", `${base}/experiments`],
-    ["Learnings", `${base}/learnings`],
-    ["Analytics", `${base}/analytics`],
-    ["Business memory", `${base}/memory`],
-    ["Integrations", `${base}/integrations`],
-    ["Settings", `${base}/settings`],
+    [n.commandCenter, base],
+    [n.agent, `${base}/agent`],
+    [n.strategy, `${base}/strategy`],
+    [n.experiments, `${base}/experiments`],
+    [n.learnings, `${base}/learnings`],
+    [n.analytics, `${base}/analytics`],
+    [n.memory, `${base}/memory`],
+    [n.integrations, `${base}/integrations`],
+    [n.settings, `${base}/settings`],
   ];
 
   return (
     <Command.Dialog
       open={open}
       onOpenChange={onOpenChange}
-      label="Command palette"
+      label={p.label}
       overlayClassName="fixed inset-0 z-50 bg-ink/25"
       contentClassName={cn("fixed top-[14vh] left-1/2 z-50 w-[min(640px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-lg bg-surface shadow-pop")}
     >
       <Command.Input
         value={query}
         onValueChange={setQuery}
-        placeholder="Jump to a page or experiment, or ask the agent…"
+        placeholder={p.placeholder}
         className="h-12 w-full border-b border-line bg-transparent px-4 text-base outline-none placeholder:text-subtle"
       />
       <Command.List className="max-h-[50vh] overflow-y-auto p-1.5 text-sm">
-        <Command.Empty className="px-3 py-6 text-muted">Nothing found. Press Enter to ask the agent.</Command.Empty>
+        <Command.Empty className="px-3 py-6 text-muted">{p.empty}</Command.Empty>
         {query.trim().length > 3 && (
-          <Command.Group heading="Agent" className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
+          <Command.Group heading={p.agentGroup} className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
             <PaletteItem value={`ask ${query}`} onSelect={() => go(`${base}/agent?ask=${encodeURIComponent(query.trim())}`)}>
-              <span className="text-agent">Ask the agent:</span> {query}
+              <span className="text-agent">{p.askAgent}</span> {query}
             </PaletteItem>
           </Command.Group>
         )}
-        <Command.Group heading="Go to" className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
+        <Command.Group heading={p.goTo} className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
           {pages.map(([label, href]) => (
             <PaletteItem key={href} value={label} onSelect={() => go(href)}>
               {label}
             </PaletteItem>
           ))}
-          <PaletteItem value="Take the product tour" onSelect={onStartTour}>
-            Take the product tour
+          <PaletteItem value={n.takeTour} onSelect={onStartTour}>
+            {n.takeTour}
           </PaletteItem>
         </Command.Group>
         {experiments.length > 0 && (
-          <Command.Group heading="Experiments" className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
+          <Command.Group heading={p.experiments} className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-subtle">
             {experiments.map((e) => (
               <PaletteItem key={e.key} value={`${e.key} ${e.name}`} onSelect={() => go(`${base}/experiments/${e.number}`)}>
                 <span className="w-16 shrink-0 text-muted tabular">{e.key}</span>
@@ -172,7 +183,7 @@ function CommandPalette({
           </Command.Group>
         )}
       </Command.List>
-      <button type="button" onClick={() => onOpenChange(false)} className="absolute top-3 right-3 grid size-6 place-items-center rounded-md text-subtle hover:bg-sunken" aria-label="Close">
+      <button type="button" onClick={() => onOpenChange(false)} className="absolute top-3 right-3 grid size-6 place-items-center rounded-md text-subtle hover:bg-sunken" aria-label={t.common.close}>
         <X className="size-3.5" />
       </button>
     </Command.Dialog>

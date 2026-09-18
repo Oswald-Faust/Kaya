@@ -44,6 +44,15 @@ export function SettingsRow({ label, description, children, className, stack }: 
   );
 }
 
+/** An uploaded picture when there is one, otherwise initials. */
+export function Avatar({ name, src, className }: { name: string; src?: string | null; className?: string }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" className={cn("shrink-0 object-cover", className)} />;
+  }
+  return <Monogram name={name} className={className} />;
+}
+
 const TONES = ["bg-lime text-ink", "bg-blue text-white", "bg-tangerine text-white", "bg-lilac text-white", "bg-sun text-ink", "bg-grass text-white", "bg-pink text-ink"];
 
 /** Initials on a clay tile, colored deterministically from the name. */

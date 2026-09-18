@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChannelBadge, StatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
+import { getI18n } from "@/i18n/server";
 import { experimentKey } from "@/lib/format";
 import type { ExperimentStatus, ExperimentOutcome } from "@/server/domain/types";
 
@@ -10,7 +11,7 @@ import type { ExperimentStatus, ExperimentOutcome } from "@/server/domain/types"
  * will do, what it depends on, and shows the real experiments that already
  * cover this channel so the page is still useful.
  */
-export function ModulePreview({
+export async function ModulePreview({
   slug,
   title,
   description,
@@ -27,14 +28,15 @@ export function ModulePreview({
   dependsOn: string[];
   experiments: { id: string; number: number; name: string; channel: string; status: ExperimentStatus; outcome: ExperimentOutcome | null }[];
 }) {
+  const mt = (await getI18n()).t.app.module;
   return (
     <div className="mx-auto max-w-[1100px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader title={title} description={description} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Panel>
-          <PanelHeader title="Experiments on this channel" count={experiments.length} description="The module works through the experiment system today." />
+          <PanelHeader title={mt.onChannel} count={experiments.length} description={mt.onChannelHint} />
           {experiments.length === 0 ? (
-            <p className="border-t border-line px-4 py-4 text-sm text-muted">No experiments on this channel yet. Channel Fit decides whether one belongs in your queue.</p>
+            <p className="border-t border-line px-4 py-4 text-sm text-muted">{mt.noneOnChannel}</p>
           ) : (
             <ul className="divide-y divide-line border-t border-line">
               {experiments.map((e) => (
@@ -51,15 +53,15 @@ export function ModulePreview({
           )}
         </Panel>
         <Panel className="p-4">
-          <p className="text-2xs font-medium text-subtle">Module status</p>
+          <p className="text-2xs font-medium text-subtle">{mt.status}</p>
           <p className="mt-1 text-sm font-medium text-ink">{status}</p>
-          <p className="mt-3 text-2xs font-medium text-subtle">Planned capabilities</p>
+          <p className="mt-3 text-2xs font-medium text-subtle">{mt.planned}</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-ink/85">
             {capabilities.map((c) => (
               <li key={c}>{c}</li>
             ))}
           </ul>
-          <p className="mt-3 text-2xs font-medium text-subtle">Depends on</p>
+          <p className="mt-3 text-2xs font-medium text-subtle">{mt.dependsOn}</p>
           <ul className="mt-1 space-y-0.5 text-sm text-muted">
             {dependsOn.map((d) => (
               <li key={d}>{d}</li>

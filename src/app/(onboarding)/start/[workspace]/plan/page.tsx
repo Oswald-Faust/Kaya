@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
 import { redirect } from "next/navigation";
 import { CalendarDays, Check, Coins, FlaskConical, Radar, ShieldCheck } from "lucide-react";
 import { OnboardingSteps } from "@/components/onboarding/steps";
@@ -10,7 +13,10 @@ import { getCurrentStrategy } from "@/server/services/strategy";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
 import { formatUsd } from "@/lib/format";
 
-export const metadata = { title: "Unlock your strategy" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.onboarding.plan.metaTitle };
+}
 
 export default async function PlanPage({ params, searchParams }: PageProps<"/start/[workspace]/plan">) {
   const [{ workspace }, sp] = await Promise.all([params, searchParams]);
@@ -22,24 +28,22 @@ export default async function PlanPage({ params, searchParams }: PageProps<"/sta
   if (!strategy) redirect(`/start/${ctx.workspaceSlug}/strategy`);
   if (plan.billingManaged) redirect(`/w/${ctx.workspaceSlug}`);
 
+  const { t, locale } = await getI18n();
+  const pl = t.onboarding.plan;
   const focus = strategy.channels.filter((c) => c.verdict !== "avoid").length;
   const budget = goal?.monthlyBudget ?? 0;
   const recommended = recommendTrialPlan({ monthlyBudget: budget, experiments: strategy.experiments.length });
   const ended = plan.status === "canceled" ? "subscription" : sp.expired === "1" || plan.status === "expired" ? "trial" : null;
   const trialUsed = plan.status === "expired" || plan.status === "canceled" || (plan.status === "active" && plan.plan !== "free");
-  const notice = sp.canceled === "1" ? "Checkout was canceled. Nothing was charged; pick a plan whenever you're ready." : sp.error === "checkout" ? "We couldn't confirm your payment. If you completed checkout, refresh in a minute." : null;
-  const terms = !billingEnabled
-    ? "14 days free, no card. Nothing is charged automatically."
-    : trialUsed
-      ? "Secure payment by Stripe. Cancel anytime from billing."
-      : "14 days free, then billed by Stripe. Cancel before the trial ends and you pay nothing.";
+  const notice = sp.canceled === "1" ? pl.canceledNotice : sp.error === "checkout" ? pl.checkoutError : null;
+  const terms = !billingEnabled ? pl.termsNoBilling : trialUsed ? pl.termsUsed : pl.termsTrial;
 
   const unlocks = [
-    { icon: Radar, text: `${strategy.channels.length} channels scored, ${focus} worth your money` },
-    { icon: Coins, text: budget > 0 ? `${formatUsd(budget)}/month split with hard caps` : "An organic-first plan with zero ad spend" },
-    { icon: FlaskConical, text: `${strategy.experiments.length} experiments ranked and ready to launch` },
-    { icon: CalendarDays, text: "A 30, 60 and 90-day plan tied to your goal" },
-    { icon: ShieldCheck, text: "The agent working in Copilot, asking before it spends" },
+    { icon: Radar, text: fmt(pl.unlockChannels, { total: strategy.channels.length, focus }) },
+    { icon: Coins, text: budget > 0 ? fmt(pl.unlockBudget, { budget: formatUsd(budget, {}, locale) }) : pl.unlockOrganic },
+    { icon: FlaskConical, text: fmt(pl.unlockExperiments, { count: strategy.experiments.length }) },
+    { icon: CalendarDays, text: pl.unlockPlan },
+    { icon: ShieldCheck, text: pl.unlockCopilot },
   ];
 
   return (
@@ -49,10 +53,9 @@ export default async function PlanPage({ params, searchParams }: PageProps<"/sta
       <div className="mt-10 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="flex flex-col justify-between rounded-[32px] bg-ink p-8 text-white sm:p-10">
           <div>
-            <p className="font-mono text-[11px] tracking-[0.12em] text-lime uppercase">{ended === "subscription" ? "Your subscription has ended" : ended ? "Your trial has ended" : "Your strategy is ready"}</p>
+            <p className="font-mono text-[11px] tracking-[0.12em] text-lime uppercase">{ended === "subscription" ? pl.endedSubscription : ended ? pl.endedTrial : pl.ready}</p>
             <h1 className="mt-4 text-[clamp(32px,3.4vw,46px)] leading-[1.04] font-medium tracking-[-0.04em]">
-              {ended ? "Keep Kaya growing " : "Unlock it and let Kaya get to work on "}
-              {ctx.workspaceName}.
+              {fmt(ended ? pl.keepGrowing : pl.unlockTitle, { name: ctx.workspaceName })}
             </h1>
             <ul className="mt-8 space-y-3.5">
               {unlocks.map((u) => (

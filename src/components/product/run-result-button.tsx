@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { recordExperimentResultAction } from "@/app/(app)/w/[workspace]/actions";
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
+import { useI18n } from "@/i18n/client";
 
 export function RecordResultButton({
   slug,
@@ -19,6 +21,8 @@ export function RecordResultButton({
   variant?: ButtonVariant;
   size?: ButtonSize;
 }) {
+  const { t } = useI18n();
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   return (
@@ -30,7 +34,8 @@ export function RecordResultButton({
         onClick={() =>
           start(async () => {
             const r = await recordExperimentResultAction(slug, experimentId, mode);
-            setMessage(r.ok ? { ok: true, text: r.message ?? "Done." } : { ok: false, text: r.error });
+            setMessage(r.ok ? { ok: true, text: r.message ?? t.app.approval.done } : { ok: false, text: r.error });
+            router.refresh();
           })
         }
       >

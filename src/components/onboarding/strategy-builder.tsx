@@ -11,24 +11,18 @@ import { Spinner } from "@/components/ui/button";
 import { Notice } from "@/components/ui/states";
 import { LiveSteps } from "./live-steps";
 import { useRunPoll, type PolledStep } from "./use-run-poll";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { en } from "@/i18n/dictionaries/en";
 
-const UPCOMING = [
-  "Reading confirmed business memory",
-  "Scoring channel fit",
-  "Allocating the budget",
-  "Choosing positioning and messaging",
-  "Identifying the growth bottleneck",
-  "Designing first experiments",
-  "Saving the strategy",
-];
 
 const OUTPUTS = [
-  { icon: Radar, label: "Channel fit scores", tone: "bg-tangerine-soft text-tangerine-deep" },
-  { icon: Coins, label: "Budget split", tone: "bg-sun-soft text-sun-deep" },
-  { icon: MessageSquareQuote, label: "Positioning", tone: "bg-blue-soft text-blue-deep" },
-  { icon: TriangleAlert, label: "Growth bottleneck", tone: "bg-pink-soft text-pink-deep" },
-  { icon: CalendarDays, label: "30 / 60 / 90 plan", tone: "bg-lilac-soft text-lilac-deep" },
-  { icon: FlaskConical, label: "First experiments", tone: "bg-grass-soft text-grass-deep" },
+  { icon: Radar, tone: "bg-tangerine-soft text-tangerine-deep" },
+  { icon: Coins, tone: "bg-sun-soft text-sun-deep" },
+  { icon: MessageSquareQuote, tone: "bg-blue-soft text-blue-deep" },
+  { icon: TriangleAlert, tone: "bg-pink-soft text-pink-deep" },
+  { icon: CalendarDays, tone: "bg-lilac-soft text-lilac-deep" },
+  { icon: FlaskConical, tone: "bg-grass-soft text-grass-deep" },
 ];
 
 export function StrategyBuilder({
@@ -47,6 +41,9 @@ export function StrategyBuilder({
   inputs: { goal: string; budget: string; facts: string; data: string };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const sb = t.onboarding.strategy;
+  const UPCOMING = en.onboarding.strategy.upcoming.map((match, i) => ({ match, label: sb.upcoming[i] }));
   const [runId, setRunId] = useState(initialRunId);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -63,10 +60,10 @@ export function StrategyBuilder({
   const progress = Math.min(1, done / UPCOMING.length);
 
   const facts = [
-    { icon: Target, label: "Goal", value: inputs.goal },
-    { icon: Wallet, label: "Budget", value: inputs.budget },
-    { icon: BadgeCheck, label: "Confirmed facts", value: inputs.facts },
-    { icon: PlugZap, label: "Connected data", value: inputs.data },
+    { icon: Target, label: sb.inputs.goal, value: inputs.goal },
+    { icon: Wallet, label: sb.inputs.budget, value: inputs.budget },
+    { icon: BadgeCheck, label: sb.inputs.facts, value: inputs.facts },
+    { icon: PlugZap, label: sb.inputs.data, value: inputs.data },
   ];
 
   return (
@@ -75,33 +72,31 @@ export function StrategyBuilder({
         <div className="p-7 sm:p-12">
           <p className="inline-flex items-center gap-2 rounded-full bg-sunken px-3 py-1.5 text-sm text-muted">
             <span className="size-1.5 animate-pulse-dot rounded-full bg-agent" />
-            {building ? "Building your strategy" : "Last step"}
+            {building ? sb.building : sb.lastStep}
           </p>
           <h1 className="mt-5 text-[clamp(34px,4vw,56px)] leading-[1.02] font-medium tracking-[-0.045em]">
             {building ? (
               <>
-                Turning what we know
+                {sb.buildingLine1}
                 <br />
-                into a plan for {productName}
+                {fmt(sb.buildingLine2, { name: productName })}
               </>
             ) : (
               <>
-                {productName}&apos;s strategy
+                {fmt(sb.readyLine1, { name: productName })}
                 <br />
-                <span className="text-muted">is one click away.</span>
+                <span className="text-muted">{sb.readyLine2}</span>
               </>
             )}
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Channel fit is scored in code from your audience, price point, budget and evidence. Every recommendation comes with its reasons, and nothing launches without your approval.
+            {sb.lead}
           </p>
 
           {building ? (
             <div className="mt-8">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium">
-                  {done} of {UPCOMING.length} steps
-                </span>
+                <span className="font-medium">{fmt(sb.stepsOf, { done, total: UPCOMING.length })}</span>
                 <span className="text-muted tabular">{Math.round(progress * 100)}%</span>
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-sunken">
@@ -134,8 +129,8 @@ export function StrategyBuilder({
               </dl>
 
               <div className="mt-8 space-y-3">
-                {failure && <Notice tone="error" title="The last attempt stopped">{failure}</Notice>}
-                {error && <Notice tone="error" title="Couldn't start">{error}</Notice>}
+                {failure && <Notice tone="error" title={sb.lastStopped}>{failure}</Notice>}
+                {error && <Notice tone="error" title={sb.couldntStart}>{error}</Notice>}
                 <button
                   type="button"
                   disabled={pending}
@@ -151,9 +146,9 @@ export function StrategyBuilder({
                   className="inline-flex h-14 items-center gap-2.5 rounded-2xl bg-ink px-7 text-base font-medium text-white shadow-pop transition-transform hover:-translate-y-0.5 hover:bg-ink-hover disabled:opacity-70"
                 >
                   {pending ? <Spinner className="size-4" /> : <Sparkles className="size-5 text-lime" />}
-                  {failure ? "Try again" : "Build my strategy"}
+                  {failure ? sb.tryAgain : sb.buildButton}
                 </button>
-                <p className="text-sm text-subtle">About 20 seconds · Nothing launches without your approval</p>
+                <p className="text-sm text-subtle">{sb.timing}</p>
               </div>
             </>
           )}
@@ -175,16 +170,16 @@ export function StrategyBuilder({
       </div>
 
       <div className="border-t border-line bg-raised px-7 py-6 sm:px-12">
-        <p className="font-mono text-[11px] tracking-[0.12em] text-subtle uppercase">What you&apos;ll get</p>
+        <p className="font-mono text-[11px] tracking-[0.12em] text-subtle uppercase">{sb.youGet}</p>
         <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {OUTPUTS.map((o, i) => {
             const ready = building && i < done;
             return (
-              <li key={o.label} className="flex items-center gap-2.5 rounded-xl bg-surface p-3">
+              <li key={sb.outputs[i]} className="flex items-center gap-2.5 rounded-xl bg-surface p-3">
                 <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${o.tone}`}>
                   <o.icon className="size-4" />
                 </span>
-                <span className="text-sm leading-tight font-medium">{o.label}</span>
+                <span className="text-sm leading-tight font-medium">{sb.outputs[i]}</span>
                 {ready && <BadgeCheck className="ml-auto size-4 text-grass-deep" />}
               </li>
             );

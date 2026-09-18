@@ -10,6 +10,7 @@ import { BrandIcon } from "@/components/brand/brand-logos";
 import { HeroScene } from "@/components/brand/clay";
 import { EASE } from "@/components/marketing/motion";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
 
 const ClayMachineScene = dynamic(() => import("./clay-machine-scene").then((m) => m.ClayMachineScene), {
   ssr: false,
@@ -29,6 +30,7 @@ const intro = (i: number) => ({
 export function HeroClayClassic({ demoHref, underNav = true }: { demoHref: string; underNav?: boolean }) {
   const stage = useRef<HTMLDivElement>(null);
   const visible = useInView(stage, { amount: 0.05 });
+  const h = useI18n().t.hero;
 
   return (
     <section ref={stage} className={cn("relative isolate overflow-hidden bg-[#2b6a4e] text-white", underNav && "-mt-[76px]")}>
@@ -41,24 +43,24 @@ export function HeroClayClassic({ demoHref, underNav = true }: { demoHref: strin
 
       <div className="relative mx-auto grid max-w-[1360px] gap-10 px-6 pt-2 pb-44 sm:px-12 md:pb-52 lg:grid-cols-[1.25fr_1fr] lg:items-end">
         <motion.h1 {...intro(0)} className="text-[clamp(50px,7.4vw,112px)] leading-[0.94] font-[560] tracking-[-0.05em]">
-          Build your product.
+          {h.titleLine1}
           <br />
-          Kaya grows it.
+          {h.titleLine2}
         </motion.h1>
 
         <div className="max-w-xl lg:pb-2">
           <motion.p {...intro(1)} className="text-[clamp(18px,1.7vw,24px)] leading-snug text-white/90">
-            The AI agent that reads your product, picks the channels worth your money and runs the experiments that grow revenue.
+            {h.clayLead}
           </motion.p>
           <motion.div {...intro(2)} className="mt-6 rounded-[20px] bg-surface p-2 text-ink shadow-[0_24px_60px_-24px_rgb(0_0_0/0.45)]">
             <StartForm autoFocus={false} className="" />
           </motion.div>
           <motion.div {...intro(3)} className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/75">
             <Link href={demoHref} className="inline-flex h-10 items-center gap-2 rounded-xl bg-lime px-4 font-medium text-ink transition-[filter] hover:brightness-95">
-              Get a demo <ArrowRight className="size-4" />
+              {h.getDemo} <ArrowRight className="size-4" />
             </Link>
             <span className="flex items-center gap-2">
-              or connect directly with
+              {h.connectDirectly}
               {(["stripe", "googleads", "posthog"] as const).map((b) => (
                 <span key={b} className="grid size-8 place-items-center rounded-full bg-white/15 backdrop-blur">
                   <span className="grid size-6 place-items-center rounded-full bg-white">

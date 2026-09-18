@@ -27,6 +27,7 @@ export interface WorkspaceContext extends UserContext {
   workspaceId: string;
   workspaceSlug: string;
   workspaceName: string;
+  workspaceIconUrl: string | null;
   role: "owner" | "admin" | "member" | "viewer";
   autonomyMode: AutonomyMode;
   isDemo: boolean;
@@ -42,7 +43,7 @@ export const currentUser = cache(async (): Promise<UserContext | null> => {
   const legacy = (await cookies()).get(LEGACY_SESSION_COOKIE)?.value;
   if (!legacy) return null;
   const row = await db.query.users.findFirst({ where: eq(users.id, legacy) });
-  return row ? { userId: row.id, name: row.name, email: row.email, isGuest: row.isGuest } : null;
+  return row ? { userId: row.id, name: row.name, email: row.email, isGuest: row.isGuest, locale: row.locale } : null;
 });
 
 export const listWorkspacesForUser = cache(async (userId: string) => {
@@ -53,6 +54,7 @@ export const listWorkspacesForUser = cache(async (userId: string) => {
       name: workspaces.name,
       organizationId: workspaces.organizationId,
       isDemo: workspaces.isDemo,
+      iconUrl: workspaces.iconUrl,
       createdAt: workspaces.createdAt,
     })
     .from(workspaces)
@@ -78,6 +80,7 @@ export const requireWorkspace = cache(async (slug: string): Promise<WorkspaceCon
     workspaceId: row.workspace.id,
     workspaceSlug: row.workspace.slug,
     workspaceName: row.workspace.name,
+    workspaceIconUrl: row.workspace.iconUrl,
     role: row.role,
     autonomyMode: row.workspace.autonomyMode,
     isDemo: row.workspace.isDemo,

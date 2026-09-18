@@ -1,10 +1,15 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
 import { ModulePreview } from "@/components/product/module-preview";
 import { requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
 import { experiments } from "@/server/db/schema";
 
-export const metadata = { title: "SEO" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.app.module.seo.metaTitle };
+}
 
 export default async function SeoPage({ params }: PageProps<"/w/[workspace]/seo">) {
   const { workspace } = await params;
@@ -15,14 +20,16 @@ export default async function SeoPage({ params }: PageProps<"/w/[workspace]/seo"
     .where(and(eq(experiments.workspaceId, ctx.workspaceId), eq(experiments.channel, "seo_content")))
     .orderBy(desc(experiments.number));
 
+  const m = (await getI18n()).t.app.module.seo;
+
   return (
     <ModulePreview
       slug={ctx.workspaceSlug}
-      title="SEO"
-      description="Queries → opportunities → pages → positions → conversions."
-      status="P1 · comparison and use-case pages run as experiments; the opportunity engine is next."
-      capabilities={["Search Console query ingestion", "Keyword gap and clustering against competitors", "Comparison, alternative and integration page briefs", "Positions and conversions per page"]}
-      dependsOn={["Google Search Console (read-only)", "Hosted pages or CMS publishing adapter"]}
+      title={m.title}
+      description={m.description}
+      status={m.status}
+      capabilities={m.capabilities}
+      dependsOn={m.dependsOn}
       experiments={rows}
     />
   );

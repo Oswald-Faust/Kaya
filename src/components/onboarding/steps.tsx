@@ -1,25 +1,20 @@
+import { getI18n } from "@/i18n/server";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-const STEPS = [
-  { id: "analyze", label: "Analyze" },
-  { id: "confirm", label: "Confirm" },
-  { id: "goal", label: "Goal" },
-  { id: "connect", label: "Connect" },
-  { id: "strategy", label: "Strategy" },
-  { id: "plan", label: "Launch" },
-] as const;
+const STEPS = [{ id: "analyze" }, { id: "confirm" }, { id: "goal" }, { id: "connect" }, { id: "strategy" }, { id: "plan" }] as const;
 
 export type OnboardingStepId = (typeof STEPS)[number]["id"];
 
 const ORDER: Record<string, number> = { analyze: 0, confirm: 1, goal: 2, connect: 3, strategy: 4, plan: 5, done: 6 };
 
 /** Step rail. Steps the founder already reached stay navigable. */
-export function OnboardingSteps({ slug, current, reached }: { slug: string; current: OnboardingStepId; reached: string }) {
+export async function OnboardingSteps({ slug, current, reached }: { slug: string; current: OnboardingStepId; reached: string }) {
+  const { t } = await getI18n();
   const reachedIndex = ORDER[reached] ?? 0;
   return (
-    <nav aria-label="Setup progress">
+    <nav aria-label={t.onboarding.steps.label}>
       <ol className="flex items-center gap-1.5 overflow-x-auto text-sm">
         {STEPS.map((s, i) => {
           const done = i < ORDER[current];
@@ -41,7 +36,7 @@ export function OnboardingSteps({ slug, current, reached }: { slug: string; curr
               >
                 {done ? <Check className="size-3" strokeWidth={3} /> : i + 1}
               </span>
-              {s.label}
+              {t.onboarding.steps[s.id]}
             </span>
           );
           return (

@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { currentUser } from "@/server/context";
-import { isDomainError } from "@/server/domain/errors";
 import { acceptInvitation } from "@/server/services/team";
+import { localizeError } from "@/i18n/errors";
+import { getI18n } from "@/i18n/server";
 
 export type AcceptState = { error: string | null };
 
@@ -14,9 +15,10 @@ export async function acceptInvitationAction(token: string): Promise<AcceptState
   try {
     slug = await acceptInvitation(user, token);
   } catch (error) {
-    if (isDomainError(error)) return { error: error.message };
-    console.error(JSON.stringify({ level: "error", msg: "accept_invitation_failed", error: String(error) }));
-    return { error: "Something went wrong. Try again in a moment." };
+    const { locale, t } = await getI18n();
+    const message = localizeError(error, locale);
+    if (!message) console.error(JSON.stringify({ level: "error", msg: "accept_invitation_failed", error: String(error) }));
+    return { error: message ?? t.common.somethingWentWrong };
   }
   redirect(`/w/${slug}`);
 }

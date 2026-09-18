@@ -9,17 +9,13 @@ import { AboutTeam } from "@/components/about/about-team";
 import { AboutNumbers } from "@/components/about/about-numbers";
 import { AboutCulture } from "@/components/about/about-culture";
 import { AboutCareers } from "@/components/about/about-careers";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "About Kaya — The AI Agent That Does Marketing For Builders",
-  description:
-    "We're on a mission to give every product builder an autonomous, accountable marketing team. Clear before clever, proof over promises, playful, never silly.",
-  openGraph: {
-    title: "About Kaya — Built for Founders Who Build",
-    description:
-      "Kaya is the autonomous growth agent with hard budget guardrails, statistical experiment evaluation, and 0% ad spend commission.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  const a = t.about;
+  return { title: a.metaTitle, description: a.metaDescription, openGraph: { title: a.ogTitle, description: a.ogDescription } };
+}
 
 export default function AboutPage() {
   return (

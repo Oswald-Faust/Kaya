@@ -22,11 +22,11 @@ export function PanelHeader({
   return (
     <header className={cn("flex items-start justify-between gap-4 px-4 pt-3.5 pb-3", className)}>
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
           {title}
-          {count !== undefined && <span className="text-xs font-normal text-subtle tabular">{count}</span>}
+          {count !== undefined && <span className="text-sm font-normal text-subtle tabular">{count}</span>}
         </h2>
-        {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
     </header>

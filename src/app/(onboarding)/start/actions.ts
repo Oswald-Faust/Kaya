@@ -6,7 +6,8 @@ import { after } from "next/server";
 import { z } from "zod";
 import { createSession } from "@/server/auth/session";
 import { currentUser, requireWorkspace } from "@/server/context";
-import { isDomainError } from "@/server/domain/errors";
+import { localizeError } from "@/i18n/errors";
+import { getI18n } from "@/i18n/server";
 import { runProductAnalysis } from "@/server/intelligence/analyze";
 import {
   addCompetitor,
@@ -30,10 +31,12 @@ import { billingEnabled } from "@/server/env";
 export type FormState = { error: string | null };
 export type MutationResult = { ok: true } | { ok: false; error: string };
 
-function toError(error: unknown): string {
-  if (isDomainError(error)) return error.message;
+async function toError(error: unknown): Promise<string> {
+  const { locale, t } = await getI18n();
+  const message = localizeError(error, locale);
+  if (message) return message;
   console.error(JSON.stringify({ level: "error", msg: "onboarding_action_failed", error: String(error) }));
-  return "Something went wrong. Please try again.";
+  return t.common.somethingWentWrong;
 }
 
 async function mutate(slug: string, fn: (ctx: Awaited<ReturnType<typeof requireWorkspace>>) => Promise<unknown>): Promise<MutationResult> {
@@ -43,7 +46,7 @@ async function mutate(slug: string, fn: (ctx: Awaited<ReturnType<typeof requireW
     revalidatePath(`/start/${slug}`, "layout");
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: toError(error) };
+    return { ok: false, error: await toError(error) };
   }
 }
 
@@ -66,9 +69,10 @@ export async function startAnalysisAction(_prev: FormState, formData: FormData):
         : { kind: "manual", name: String(formData.get("name") ?? ""), description: String(formData.get("description") ?? ""), url: String(formData.get("url") ?? "") },
     );
     slug = created.slug;
-    after(() => runProductAnalysis(created.workspaceId, created.runId));
+    const { locale } = await getI18n();
+    after(() => runProductAnalysis(created.workspaceId, created.runId, locale));
   } catch (error) {
-    return { error: toError(error) };
+    return { error: await toError(error) };
   }
   redirect(`/start/${slug}/analyze`);
 }
@@ -76,7 +80,8 @@ export async function startAnalysisAction(_prev: FormState, formData: FormData):
 export async function retryAnalysisAction(slug: string): Promise<void> {
   const ctx = await requireWorkspace(slug);
   const runId = await restartAnalysis(ctx);
-  after(() => runProductAnalysis(ctx.workspaceId, runId));
+  const { locale } = await getI18n();
+  after(() => runProductAnalysis(ctx.workspaceId, runId, locale));
   redirect(`/start/${slug}/analyze`);
 }
 
@@ -132,7 +137,7 @@ const num = (v: string | undefined) => {
 
 export async function saveGoalAction(slug: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = GoalForm.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Choose a goal, a timeframe and a budget." };
+  if (!parsed.success) return { error: (await getI18n()).t.onboarding.goal.formError };
   try {
     const ctx = await requireWorkspace(slug);
     const d = parsed.data;
@@ -145,9 +150,9 @@ export async function saveGoalAction(slug: string, _prev: FormState, formData: F
       budgetBand: d.budgetBand,
       customBudget: num(d.customBudget),
       customText: d.customText ?? null,
-    });
+    }, (await getI18n()).locale);
   } catch (error) {
-    return { error: toError(error) };
+    return { error: await toError(error) };
   }
   redirect(`/start/${slug}/connect`);
 }
@@ -161,11 +166,12 @@ export async function finishConnectAction(slug: string): Promise<void> {
 export async function startStrategyAction(slug: string): Promise<{ ok: true; runId: string } | { ok: false; error: string }> {
   try {
     const ctx = await requireWorkspace(slug);
-    const runId = await startStrategyRun(ctx);
-    after(() => runStrategyGeneration(ctx.workspaceId, runId));
+    const { locale } = await getI18n();
+    const runId = await startStrategyRun(ctx, locale);
+    after(() => runStrategyGeneration(ctx.workspaceId, runId, locale));
     return { ok: true, runId };
   } catch (error) {
-    return { ok: false, error: toError(error) };
+    return { ok: false, error: await toError(error) };
   }
 }
 
@@ -177,7 +183,7 @@ export async function startTrialAction(slug: string, plan: string, interval: str
     if (billingEnabled) checkoutUrl = await createCheckout(ctx, ...input);
     else await startTrial(ctx, ...input);
   } catch (error) {
-    return { ok: false, error: toError(error) };
+    return { ok: false, error: await toError(error) };
   }
   redirect(checkoutUrl ?? `/w/${slug}`);
 }
@@ -187,7 +193,7 @@ export async function chooseFreeAction(slug: string): Promise<MutationResult> {
     const ctx = await requireWorkspace(slug);
     await chooseFree(ctx);
   } catch (error) {
-    return { ok: false, error: toError(error) };
+    return { ok: false, error: await toError(error) };
   }
   redirect(`/w/${slug}`);
 }

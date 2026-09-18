@@ -4,12 +4,12 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { currentUser } from "@/server/context";
 import { googleAuthEnabled } from "@/server/env";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Log in" };
-
-const NOTICES: Record<string, string> = {
-  google: "Google sign-in didn't complete. Try again or use your email.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.auth.loginTitle };
+}
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const sp = await searchParams;
@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <AuthShell variant="login">
-      <AuthForm mode="login" next={next} product={product} googleEnabled={googleAuthEnabled} notice={typeof sp.error === "string" ? NOTICES[sp.error] : undefined} />
+      <AuthForm mode="login" next={next} product={product} googleEnabled={googleAuthEnabled} notice={sp.error === "google" ? (await getI18n()).t.auth.googleError : undefined} />
     </AuthShell>
   );
 }

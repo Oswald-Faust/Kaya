@@ -4,8 +4,12 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { currentUser } from "@/server/context";
 import { googleAuthEnabled } from "@/server/env";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Create your account" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.auth.signupTitle };
+}
 
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const sp = await searchParams;

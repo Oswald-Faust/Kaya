@@ -1,10 +1,15 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
 import { ModulePreview } from "@/components/product/module-preview";
 import { requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
 import { experiments } from "@/server/db/schema";
 
-export const metadata = { title: "Creators" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.app.module.creators.metaTitle };
+}
 
 export default async function CreatorsPage({ params }: PageProps<"/w/[workspace]/creators">) {
   const { workspace } = await params;
@@ -15,14 +20,16 @@ export default async function CreatorsPage({ params }: PageProps<"/w/[workspace]
     .where(and(eq(experiments.workspaceId, ctx.workspaceId), eq(experiments.channel, "youtube_creators")))
     .orderBy(desc(experiments.number));
 
+  const m = (await getI18n()).t.app.module.creators;
+
   return (
     <ModulePreview
       slug={ctx.workspaceSlug}
-      title="Creators"
-      description="Discovery → outreach → deal → code or link → revenue."
-      status="P1 · Stage 5. Creator tests run as experiments with coupon tracking; discovery and outreach are not built yet."
-      capabilities={["Creator discovery ranked by audience fit, not follower count", "Outreach drafts, always approved by a human (R4)", "Deal, code and link tracking", "Revenue attributed per creator"]}
-      dependsOn={["Creator and affiliate tracking adapter", "Stripe coupons for attribution"]}
+      title={m.title}
+      description={m.description}
+      status={m.status}
+      capabilities={m.capabilities}
+      dependsOn={m.dependsOn}
       experiments={rows}
     />
   );

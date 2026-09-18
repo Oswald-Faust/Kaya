@@ -7,6 +7,9 @@ import { connectApiKeyAction, connectDemoAction, disconnectAction, selectAccount
 import { BrandIcon, type BrandName } from "@/components/brand/brand-logos";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass, Spinner } from "@/components/ui/button";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { translateServerText } from "@/i18n/server-text";
 import { cn } from "@/lib/cn";
 import { relativeTime } from "@/lib/format";
 import type { IntegrationDefinition } from "@/server/integrations/catalog";
@@ -34,13 +37,13 @@ const BRAND: Record<string, BrandName> = {
   github: "github",
 };
 
-const OAUTH_LABEL: Record<string, string> = {
-  google_analytics: "Continue with Google",
-  search_console: "Continue with Google",
-  google_ads: "Continue with Google",
-  meta_ads: "Continue with Facebook",
-  x: "Continue with X",
-  linkedin_organic: "Continue with LinkedIn",
+const OAUTH_LABEL: Record<string, "google" | "facebook" | "x" | "linkedin"> = {
+  google_analytics: "google",
+  search_console: "google",
+  google_ads: "google",
+  meta_ads: "facebook",
+  x: "x",
+  linkedin_organic: "linkedin",
 };
 
 export function IntegrationLogo({ provider, name }: { provider: string; name: string }) {
@@ -72,6 +75,9 @@ export function IntegrationCard({
   returnTo: string;
 }) {
   const router = useRouter();
+  const { t, locale } = useI18n();
+  const it = t.integrations;
+  const tr = (text: string) => translateServerText(text, locale);
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
@@ -104,11 +110,11 @@ export function IntegrationCard({
             {connected ? (
               failing ? (
                 <Badge tone="negative">
-                  <AlertTriangle className="size-3" /> Reconnect needed
+                  <AlertTriangle className="size-3" /> {it.reconnectNeeded}
                 </Badge>
               ) : (
                 <Badge tone="positive">
-                  <Check className="size-3" /> {connection.mode === "demo" ? "Demo" : "Connected"}
+                  <Check className="size-3" /> {connection.mode === "demo" ? it.demo : it.connected}
                 </Badge>
               )
             ) : (
@@ -118,15 +124,15 @@ export function IntegrationCard({
           {connected && connection.accountLabel ? (
             <p className="mt-0.5 truncate text-sm text-ink">{connection.accountLabel}</p>
           ) : (
-            <p className="mt-0.5 text-sm text-muted">{def.unlocks}</p>
+            <p className="mt-0.5 text-sm text-muted">{tr(def.unlocks)}</p>
           )}
         </div>
         {canManage && !connected && spec.type !== "none" && (
           <Button size="sm" variant={open ? "ghost" : "secondary"} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-            {open ? "Close" : "Connect"}
+            {open ? it.close : it.connect}
           </Button>
         )}
-        {spec.type === "none" && !connected && <span className="text-xs text-subtle">Coming soon</span>}
+        {spec.type === "none" && !connected && <span className="text-xs text-subtle">{it.comingSoon}</span>}
       </div>
 
       {connected && (
@@ -136,19 +142,19 @@ export function IntegrationCard({
               {connection.syncError ? (
                 <p className={cn("flex items-start gap-1.5 text-xs", failing ? "text-negative" : "text-warning")}>
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                  {connection.syncError}
+                  {tr(connection.syncError)}
                 </p>
               ) : connection.lastSyncSummary ? (
                 <p className="text-xs text-muted">
-                  <span className="text-ink">{connection.lastSyncSummary}</span>
-                  {connection.lastSyncAt && <span className="text-subtle"> · synced {relativeTime(connection.lastSyncAt)}</span>}
+                  <span className="text-ink">{tr(connection.lastSyncSummary)}</span>
+                  {connection.lastSyncAt && <span className="text-subtle">{fmt(it.syncedAgo, { when: relativeTime(connection.lastSyncAt, undefined, locale) })}</span>}
                 </p>
               ) : (
-                <p className="text-xs text-subtle">Not synced yet.</p>
+                <p className="text-xs text-subtle">{it.notSynced}</p>
               )}
               {connection.accounts.length > 1 && canManage && (
                 <label className="relative block">
-                  <span className="sr-only">Account</span>
+                  <span className="sr-only">{it.account}</span>
                   <select
                     value={connection.accountId ?? ""}
                     disabled={pending}
@@ -172,30 +178,30 @@ export function IntegrationCard({
               {connection.mode === "live" &&
                 (failing && spec.type === "oauth" && spec.available ? (
                   <a href={`/api/integrations/${def.provider}/connect?workspace=${slug}&returnTo=${encodeURIComponent(returnTo)}`} className={buttonClass("primary", "sm")}>
-                    Reconnect
+                    {it.reconnect}
                   </a>
                 ) : failing ? (
                   <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
-                    Update key
+                    {it.updateKey}
                   </Button>
                 ) : (
                   <Button size="sm" variant="secondary" pending={busy === "sync"} icon={<RefreshCw className="size-3.5" />} onClick={() => run("sync", () => syncAction(slug, def.provider))}>
-                    Sync now
+                    {it.syncNow}
                   </Button>
                 ))}
               {confirmDisconnect ? (
                 <span className="flex items-center gap-1.5 text-xs text-muted">
-                  Delete stored access?
+                  {it.deleteAccess}
                   <Button size="sm" variant="danger" pending={busy === "disconnect"} onClick={() => run("disconnect", () => disconnectAction(slug, def.provider), () => setConfirmDisconnect(false))}>
-                    Disconnect
+                    {it.disconnect}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setConfirmDisconnect(false)}>
-                    Keep
+                    {it.keep}
                   </Button>
                 </span>
               ) : (
                 <Button size="sm" variant="ghost" icon={<Unplug className="size-3.5" />} onClick={() => setConfirmDisconnect(true)}>
-                  Disconnect
+                  {it.disconnect}
                 </Button>
               )}
             </div>
@@ -207,24 +213,24 @@ export function IntegrationCard({
       {open && (!connected || failing) && (
         <div className="space-y-4 border-t border-line bg-raised px-4 py-4">
           <div>
-            <p className="text-xs font-medium text-subtle">Kaya will be able to</p>
+            <p className="text-xs font-medium text-subtle">{it.willBeAble}</p>
             <ul className="mt-2 space-y-1.5">
               {def.permissions.map((p) => (
                 <li key={p.label} className="flex items-start gap-2 text-sm text-ink">
                   {p.access === "read" ? <Eye className="mt-0.5 size-4 shrink-0 text-muted" /> : <PenLine className="mt-0.5 size-4 shrink-0 text-warning" />}
                   <span>
-                    <span className={cn("mr-1.5 text-xs font-medium", p.access === "read" ? "text-muted" : "text-warning")}>{p.access === "read" ? "Read" : "Write"}</span>
-                    {p.label}
+                    <span className={cn("mr-1.5 text-xs font-medium", p.access === "read" ? "text-muted" : "text-warning")}>{p.access === "read" ? it.read : it.write}</span>
+                    {tr(p.label)}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-muted">Writes always go through your autonomy mode and budget limits and are recorded in the audit log. Credentials are encrypted and deleted when you disconnect.</p>
+            <p className="mt-2 text-xs text-muted">{it.writesNote}</p>
           </div>
 
           {isDemo ? (
             <Button size="sm" variant="primary" pending={busy === "demo"} onClick={() => run("demo", () => connectDemoAction(slug, def.provider), () => setOpen(false))}>
-              Connect in demo mode
+              {it.connectDemo}
             </Button>
           ) : spec.type === "api_key" ? (
             spec.available ? (
@@ -237,10 +243,10 @@ export function IntegrationCard({
               <div className="flex flex-wrap items-center gap-3">
                 <a href={`/api/integrations/${def.provider}/connect?workspace=${slug}&returnTo=${encodeURIComponent(returnTo)}`} className={buttonClass("primary", "lg")}>
                   {BRAND[def.provider] && <BrandIcon brand={BRAND[def.provider]} mono className="size-4" />}
-                  {OAUTH_LABEL[def.provider] ?? "Continue"}
+                  {it.oauth[OAUTH_LABEL[def.provider] ?? "generic"]}
                 </a>
                 <span className="flex items-center gap-1 text-xs text-muted">
-                  <Lock className="size-3" /> You approve access on {def.name.split(" ")[0]}&apos;s own page
+                  <Lock className="size-3" /> {fmt(it.approveOn, { name: def.name.split(" ")[0] })}
                 </span>
               </div>
             ) : (
@@ -264,16 +270,19 @@ function Feedback({ result }: { result: IntegrationResult }) {
 }
 
 function Unavailable({ reason }: { reason?: string }) {
+  const { t, locale } = useI18n();
   return (
     <p className="flex items-start gap-2 rounded-xl border border-dashed border-line-strong bg-surface px-3 py-2.5 text-xs text-muted">
       <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
-      {reason ?? "Not available yet."}
+      {reason ? translateServerText(reason, locale) : t.integrations.notAvailable}
     </p>
   );
 }
 
 function ApiKeyForm({ spec, name, pending, onSubmit }: { spec: Extract<ConnectSpec, { type: "api_key" }>; name: string; pending: boolean; onSubmit: (values: Record<string, string>) => void }) {
   const [reveal, setReveal] = useState(false);
+  const { t, locale } = useI18n();
+  const it = t.integrations;
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
@@ -285,12 +294,12 @@ function ApiKeyForm({ spec, name, pending, onSubmit }: { spec: Extract<ConnectSp
         {spec.instructions.map((step, i) => (
           <li key={i} className="flex gap-2">
             <span className="grid size-5 shrink-0 place-items-center rounded-full bg-sunken text-2xs font-medium text-muted">{i + 1}</span>
-            <span>{step}</span>
+            <span>{translateServerText(step, locale)}</span>
           </li>
         ))}
         <li className="pt-1">
           <a href={spec.docsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-agent hover:underline">
-            Open {name} <ExternalLink className="size-3" />
+            {fmt(it.open, { name })} <ExternalLink className="size-3" />
           </a>
         </li>
       </ol>
@@ -298,8 +307,8 @@ function ApiKeyForm({ spec, name, pending, onSubmit }: { spec: Extract<ConnectSp
         {spec.fields.map((f) => (
           <label key={f.name} className={cn("block space-y-1", (f.secret || spec.fields.length === 1) && "sm:col-span-2")}>
             <span className="text-xs font-medium text-muted">
-              {f.label}
-              {f.optional && <span className="font-normal text-subtle"> · optional</span>}
+              {translateServerText(f.label, locale)}
+              {f.optional && <span className="font-normal text-subtle">{it.optional}</span>}
             </span>
             {f.options ? (
               <select name={f.name} defaultValue={f.options[0].value} className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-ink">
@@ -322,7 +331,7 @@ function ApiKeyForm({ spec, name, pending, onSubmit }: { spec: Extract<ConnectSp
                   className={cn("h-11 w-full rounded-lg border border-line bg-surface text-sm outline-none focus:border-ink", f.secret ? "pr-10 pl-9 font-mono" : "px-3")}
                 />
                 {f.secret && (
-                  <button type="button" onClick={() => setReveal((r) => !r)} aria-label={reveal ? "Hide key" : "Show key"} className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-subtle hover:text-ink">
+                  <button type="button" onClick={() => setReveal((r) => !r)} aria-label={reveal ? it.hideKey : it.showKey} className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-subtle hover:text-ink">
                     {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 )}
@@ -333,7 +342,7 @@ function ApiKeyForm({ spec, name, pending, onSubmit }: { spec: Extract<ConnectSp
       </div>
       <button type="submit" disabled={pending} className={buttonClass("primary", "lg")}>
         {pending && <Spinner />}
-        {pending ? `Checking with ${name}…` : "Verify and connect"}
+        {pending ? fmt(it.checking, { name }) : it.verify}
       </button>
     </form>
   );

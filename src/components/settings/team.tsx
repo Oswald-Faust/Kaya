@@ -16,18 +16,22 @@ import {
 } from "@/app/(app)/w/[workspace]/settings/actions";
 import { Feedback } from "./forms";
 import { inputClass } from "./primitives";
-import { ROLES, type Role } from "./roles";
+import { ROLE_IDS, type Role } from "./roles";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 
 const selectClass =
   "h-9 appearance-none rounded-md border border-line-strong bg-surface bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%238c887f%22 stroke-width=%222%22><path d=%22m6 9 6 6 6-6%22/></svg>')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat pr-7 pl-2.5 text-sm text-ink outline-none focus:border-agent disabled:bg-raised disabled:text-subtle";
 
 export function InviteForm({ slug, actorRole, disabled }: { slug: string; actorRole: Role; disabled: boolean }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const tm = t.settings.team;
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const [result, setResult] = useState<InviteActionResult | null>(null);
   const [pending, start] = useTransition();
-  const options = ROLES.filter((r) => r.id !== "owner" && (actorRole === "owner" || r.id !== "admin"));
+  const options = ROLE_IDS.filter((r) => r !== "owner" && (actorRole === "owner" || r !== "admin"));
 
   return (
     <div className="px-4 py-4">
@@ -46,7 +50,7 @@ export function InviteForm({ slug, actorRole, disabled }: { slug: string; actorR
         }}
       >
         <label className="sr-only" htmlFor="invite-email">
-          Email address
+          {tm.emailLabel}
         </label>
         <div className="relative flex-1">
           <Mail className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-subtle" />
@@ -57,26 +61,26 @@ export function InviteForm({ slug, actorRole, disabled }: { slug: string; actorR
             disabled={disabled}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="teammate@company.com"
+            placeholder={tm.emailPlaceholder}
             className={cn(inputClass, "pl-8")}
           />
         </div>
         <label className="sr-only" htmlFor="invite-role">
-          Role
+          {tm.roleLabel}
         </label>
         <select id="invite-role" disabled={disabled} value={role} onChange={(e) => setRole(e.target.value as Role)} className={cn(selectClass, "sm:w-32")}>
           {options.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
+            <option key={r} value={r}>
+              {t.settings.roles[r].label}
             </option>
           ))}
         </select>
         <button type="submit" disabled={disabled || pending || !email} className={buttonClass("primary", "md", "h-9 disabled:bg-line-strong")}>
           {pending ? <Spinner /> : <Send className="size-3.5" />}
-          Invite
+          {tm.invite}
         </button>
       </form>
-      <p className="mt-2 text-xs text-muted">{options.find((r) => r.id === role)?.description}</p>
+      <p className="mt-2 text-xs text-muted">{t.settings.roles[role].description}</p>
       {result && !result.ok && (
         <p role="alert" className="mt-2 text-xs text-negative">
           {result.error}
@@ -88,18 +92,20 @@ export function InviteForm({ slug, actorRole, disabled }: { slug: string; actorR
 }
 
 function InviteLink({ result, onDismiss }: { result: Extract<InviteActionResult, { ok: true }>; onDismiss: () => void }) {
+  const { t } = useI18n();
+  const tm = t.settings.team;
   const [copied, setCopied] = useState(false);
   return (
     <div role="status" className="mt-3 rounded-md border border-positive/25 bg-positive-soft p-3">
       <p className="flex items-center gap-1.5 text-sm font-medium text-positive">
         <Check className="size-4" />
-        {result.emailed ? `Invitation emailed to ${result.email}` : `Invitation ready for ${result.email}`}
+        {fmt(result.emailed ? tm.emailed : tm.ready, { email: result.email })}
       </p>
       <p className="mt-0.5 text-xs text-muted">
-        {result.emailed ? "You can also share this link directly. It works once and expires in 7 days." : "Send them this link. It works once, only for that email address, and expires in 7 days."}
+        {result.emailed ? tm.emailedHint : tm.readyHint}
       </p>
       <div className="mt-2 flex gap-2">
-        <input readOnly value={result.inviteUrl} onFocus={(e) => e.target.select()} className={cn(inputClass, "h-8 bg-surface text-xs")} aria-label="Invitation link" />
+        <input readOnly value={result.inviteUrl} onFocus={(e) => e.target.select()} className={cn(inputClass, "h-8 bg-surface text-xs")} aria-label={tm.linkLabel} />
         <button
           type="button"
           onClick={() => {
@@ -110,10 +116,10 @@ function InviteLink({ result, onDismiss }: { result: Extract<InviteActionResult,
           className={buttonClass("secondary", "sm", "h-8")}
         >
           {copied ? <Check className="size-3.5 text-positive" /> : <Copy className="size-3.5" />}
-          {copied ? "Copied" : "Copy link"}
+          {copied ? t.common.copied : tm.copyLink}
         </button>
         <button type="button" onClick={onDismiss} className={buttonClass("ghost", "sm", "h-8")}>
-          Done
+          {t.common.done}
         </button>
       </div>
     </div>
@@ -155,6 +161,8 @@ export function MemberControls({
   name: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const tm = t.settings.team;
   const [result, setResult] = useState<SettingsResult | null>(null);
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -178,7 +186,7 @@ export function MemberControls({
         {pending && <Spinner className="text-subtle" />}
         {roleOptions.length > 0 ? (
           <select
-            aria-label={`Role for ${name}`}
+            aria-label={fmt(tm.roleFor, { name })}
             value={role}
             disabled={pending}
             onChange={(e) => run(() => changeRoleAction(slug, memberId, e.target.value))}
@@ -186,16 +194,16 @@ export function MemberControls({
           >
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {ROLES.find((x) => x.id === r)?.label}
+                {t.settings.roles[r].label}
               </option>
             ))}
           </select>
         ) : (
-          <span className="inline-flex h-8 w-28 items-center px-2.5 text-xs text-muted">{ROLES.find((x) => x.id === role)?.label}</span>
+          <span className="inline-flex h-8 w-28 items-center px-2.5 text-xs text-muted">{t.settings.roles[role].label}</span>
         )}
         {canRemove ? (
           <div ref={ref} className="relative">
-            <button type="button" aria-label={`More actions for ${name}`} aria-expanded={menu} onClick={() => setMenu((o) => !o)} className="grid size-8 place-items-center rounded-md text-subtle hover:bg-sunken hover:text-ink">
+            <button type="button" aria-label={fmt(tm.moreFor, { name })} aria-expanded={menu} onClick={() => setMenu((o) => !o)} className="grid size-8 place-items-center rounded-md text-subtle hover:bg-sunken hover:text-ink">
               <MoreHorizontal className="size-4" />
             </button>
             {menu && (
@@ -203,14 +211,14 @@ export function MemberControls({
                 {!confirming ? (
                   <button type="button" onClick={() => setConfirming(true)} className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-sm text-negative hover:bg-negative-soft">
                     <UserMinus className="size-3.5" />
-                    {isSelf ? "Leave workspace" : "Remove from workspace"}
+                    {isSelf ? tm.leave : tm.removeFrom}
                   </button>
                 ) : (
                   <div className="p-1.5">
-                    <p className="text-xs text-muted">{isSelf ? "You'll lose access right away." : `${name} loses access right away and frees a seat.`}</p>
+                    <p className="text-xs text-muted">{isSelf ? tm.leaveWarning : fmt(tm.removeWarning, { name })}</p>
                     <div className="mt-2 flex gap-1.5">
                       <button type="button" onClick={close} className={buttonClass("secondary", "sm", "flex-1")}>
-                        Cancel
+                        {t.common.cancel}
                       </button>
                       <button
                         type="button"
@@ -220,7 +228,7 @@ export function MemberControls({
                         }}
                         className={buttonClass("primary", "sm", "flex-1 bg-negative hover:bg-negative")}
                       >
-                        {isSelf ? "Leave" : "Remove"}
+                        {isSelf ? tm.leaveShort : tm.removeShort}
                       </button>
                     </div>
                   </div>
@@ -239,6 +247,7 @@ export function MemberControls({
 
 export function InvitationControls({ slug, invitationId, email, canManage }: { slug: string; invitationId: string; email: string; canManage: boolean }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [link, setLink] = useState<InviteActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -262,11 +271,11 @@ export function InvitationControls({ slug, invitationId, email, canManage }: { s
           className={buttonClass("secondary", "sm")}
         >
           <RotateCw className="size-3.5" />
-          Resend
+          {t.settings.team.resend}
         </button>
         <button
           type="button"
-          aria-label={`Revoke invitation for ${email}`}
+          aria-label={fmt(t.settings.team.revokeFor, { email })}
           disabled={pending}
           onClick={() =>
             start(async () => {
@@ -287,6 +296,8 @@ export function InvitationControls({ slug, invitationId, email, canManage }: { s
 }
 
 function CopyNewLink({ url, emailed }: { url: string; emailed: boolean }) {
+  const { t } = useI18n();
+  const tm = t.settings.team;
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -298,7 +309,7 @@ function CopyNewLink({ url, emailed }: { url: string; emailed: boolean }) {
       className="flex items-center gap-1 text-xs text-agent hover:underline"
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-      {copied ? "New link copied" : emailed ? "Emailed · copy new link" : "Copy new link"}
+      {copied ? tm.newLinkCopied : emailed ? tm.emailedCopyNew : tm.copyNew}
     </button>
   );
 }

@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { rotateSession } from "@/server/auth/session";
 import { currentUser } from "@/server/context";
-import { isDomainError } from "@/server/domain/errors";
+import { localizeError } from "@/i18n/errors";
+import { getI18n } from "@/i18n/server";
 import { adoptGuest, checkRateLimit, isPlatformAdmin, logInWithPassword, signUpWithPassword } from "@/server/services/account";
 
 export type AuthFormState = { error: string | null };
@@ -14,10 +15,12 @@ function safeNext(value: FormDataEntryValue | null): string | null {
   return s.startsWith("/") && !s.startsWith("//") && !s.startsWith("/\\") ? s : null;
 }
 
-function toError(error: unknown): string {
-  if (isDomainError(error)) return error.message;
+async function toError(error: unknown): Promise<string> {
+  const { locale, t } = await getI18n();
+  const message = localizeError(error, locale);
+  if (message) return message;
   console.error(JSON.stringify({ level: "error", msg: "auth_action_failed", error: String(error) }));
-  return "Something went wrong. Please try again.";
+  return t.common.somethingWentWrong;
 }
 
 async function clientKey(prefix: string, email: FormDataEntryValue | null) {
@@ -38,7 +41,7 @@ export async function signupAction(_prev: AuthFormState, formData: FormData): Pr
       await rotateSession(userId);
     }
   } catch (error) {
-    return { error: toError(error) };
+    return { error: await toError(error) };
   }
   redirect(next);
 }
@@ -53,7 +56,7 @@ export async function loginAction(_prev: AuthFormState, formData: FormData): Pro
     await rotateSession(userId);
     next ??= (await isPlatformAdmin(userId)) ? "/admin" : "/start";
   } catch (error) {
-    return { error: toError(error) };
+    return { error: await toError(error) };
   }
   redirect(next);
 }

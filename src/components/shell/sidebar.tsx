@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
 
 interface NavItem {
   href: string;
@@ -34,6 +35,7 @@ interface NavItem {
 export function Sidebar({
   slug,
   switcher,
+  billing,
   pendingApprovals,
   running,
   onOpenPalette,
@@ -41,36 +43,39 @@ export function Sidebar({
 }: {
   slug: string;
   switcher: ReactNode;
+  billing?: ReactNode;
   pendingApprovals: number;
   running: number;
   onOpenPalette?: () => void;
   onStartTour?: () => void;
 }) {
+  const { t } = useI18n();
+  const n = t.shell.nav;
   const base = `/w/${slug}`;
   const primary: NavItem[] = [
-    { href: base, label: "Command Center", tour: "command-center", icon: <Gauge />, exact: true },
-    { href: `${base}/agent`, label: "Agent", tour: "agent", icon: <Bot />, badge: pendingApprovals },
+    { href: base, label: n.commandCenter, tour: "command-center", icon: <Gauge />, exact: true },
+    { href: `${base}/agent`, label: n.agent, tour: "agent", icon: <Bot />, badge: pendingApprovals },
   ];
   const loop: NavItem[] = [
-    { href: `${base}/strategy`, label: "Strategy", tour: "strategy", icon: <Compass /> },
-    { href: `${base}/experiments`, label: "Experiments", tour: "experiments", icon: <FlaskConical />, badge: running },
-    { href: `${base}/learnings`, label: "Learnings", tour: "learnings", icon: <BookOpen /> },
-    { href: `${base}/analytics`, label: "Analytics", tour: "analytics", icon: <Activity /> },
-    { href: `${base}/memory`, label: "Business memory", tour: "memory", icon: <Brain /> },
+    { href: `${base}/strategy`, label: n.strategy, tour: "strategy", icon: <Compass /> },
+    { href: `${base}/experiments`, label: n.experiments, tour: "experiments", icon: <FlaskConical />, badge: running },
+    { href: `${base}/learnings`, label: n.learnings, tour: "learnings", icon: <BookOpen /> },
+    { href: `${base}/analytics`, label: n.analytics, tour: "analytics", icon: <Activity /> },
+    { href: `${base}/memory`, label: n.memory, tour: "memory", icon: <Brain /> },
   ];
   const execution: NavItem[] = [
-    { href: `${base}/campaigns`, label: "Campaigns", icon: <Megaphone /> },
-    { href: `${base}/content`, label: "Content", icon: <FileText /> },
-    { href: `${base}/seo`, label: "SEO", icon: <Search /> },
-    { href: `${base}/creators`, label: "Creators", icon: <Users /> },
+    { href: `${base}/campaigns`, label: n.campaigns, icon: <Megaphone /> },
+    { href: `${base}/content`, label: n.content, icon: <FileText /> },
+    { href: `${base}/seo`, label: n.seo, icon: <Search /> },
+    { href: `${base}/creators`, label: n.creators, icon: <Users /> },
   ];
   const system: NavItem[] = [
-    { href: `${base}/integrations`, label: "Integrations", tour: "integrations", icon: <Plug /> },
-    { href: `${base}/settings`, label: "Settings", tour: "settings", icon: <Settings /> },
+    { href: `${base}/integrations`, label: n.integrations, tour: "integrations", icon: <Plug /> },
+    { href: `${base}/settings`, label: n.settings, tour: "settings", icon: <Settings /> },
   ];
 
   return (
-    <nav aria-label="Workspace" className="flex h-full flex-col gap-4 px-2.5 py-3">
+    <nav aria-label={n.workspace} className="flex h-full flex-col gap-4 px-2.5 py-3">
       <div className="px-1">{switcher}</div>
       {onOpenPalette && (
         <button
@@ -80,13 +85,13 @@ export function Sidebar({
           className="mx-1 flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-xs text-subtle hover:border-line-strong"
         >
           <Search className="size-3.5" />
-          <span className="flex-1 text-left">Search or ask the agent</span>
+          <span className="flex-1 text-left">{n.search}</span>
           <kbd className="rounded-sm border border-line px-1 text-2xs text-muted">⌘K</kbd>
         </button>
       )}
       <NavGroup items={primary} prominent />
-      <NavGroup label="Growth loop" items={loop} />
-      <NavGroup label="Execution" items={execution} tour="execution" />
+      <NavGroup label={n.growthLoop} items={loop} />
+      <NavGroup label={n.execution} items={execution} tour="execution" />
       <div className="mt-auto flex flex-col gap-2">
         {onStartTour && (
           <button
@@ -95,9 +100,10 @@ export function Sidebar({
             className="mx-1 flex h-7 items-center gap-2 rounded-md px-1.5 text-xs text-subtle hover:bg-sunken hover:text-ink [&_svg]:size-3.5"
           >
             <Sparkles />
-            <span>Take the product tour</span>
+            <span>{n.takeTour}</span>
           </button>
         )}
+        {billing && <div className="mx-1">{billing}</div>}
         <NavGroup items={system} />
       </div>
     </nav>

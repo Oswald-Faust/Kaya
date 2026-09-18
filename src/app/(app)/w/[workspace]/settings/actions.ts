@@ -8,11 +8,12 @@ import { listWorkspacesForUser, requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
 import { budgetPolicies, workspaces } from "@/server/db/schema";
 import { recordAudit } from "@/server/services/audit";
-import { isDomainError } from "@/server/domain/errors";
 import { checkRateLimit } from "@/server/services/account";
 import { getGovernance } from "@/server/services/policy-store";
-import { changePassword, deleteOwnWorkspace, renameWorkspace, updateProfileName } from "@/server/services/settings";
+import { changePassword, deleteOwnWorkspace, renameWorkspace, setAvatar, setWorkspaceIcon, updateProfileName } from "@/server/services/settings";
 import { changeMemberRole, inviteMember, removeMember, resendInvitation, revokeInvitation } from "@/server/services/team";
+import { localizeError } from "@/i18n/errors";
+import { getI18n } from "@/i18n/server";
 
 export type GovernanceState = { error: string | null; saved: boolean };
 
@@ -28,13 +29,14 @@ const Schema = z.object({
 
 export async function updateGovernanceAction(slug: string, _prev: GovernanceState, formData: FormData): Promise<GovernanceState> {
   const ctx = await requireWorkspace(slug);
-  if (ctx.role !== "owner" && ctx.role !== "admin") return { error: "Only owners and admins can change autonomy and budget limits.", saved: false };
+  const { t } = await getI18n();
+  if (ctx.role !== "owner" && ctx.role !== "admin") return { error: t.settings.agent.errorRole, saved: false };
 
   const parsed = Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Check the values: budgets must be positive numbers.", saved: false };
+  if (!parsed.success) return { error: t.settings.agent.errorValues, saved: false };
   const d = parsed.data;
-  if (d.maxDailySpend > d.monthlyBudget) return { error: "The daily cap can't exceed the monthly budget.", saved: false };
-  if (d.maxExperimentBudget > d.monthlyBudget) return { error: "The per-experiment cap can't exceed the monthly budget.", saved: false };
+  if (d.maxDailySpend > d.monthlyBudget) return { error: t.settings.agent.errorDaily, saved: false };
+  if (d.maxExperimentBudget > d.monthlyBudget) return { error: t.settings.agent.errorExperiment, saved: false };
 
   const before = await getGovernance(ctx.workspaceId);
   const policy = {
@@ -71,10 +73,17 @@ export async function updateGovernanceAction(slug: string, _prev: GovernanceStat
 
 export type SettingsResult = { ok: true; message?: string } | { ok: false; error: string };
 
-function failed(error: unknown): SettingsResult {
-  if (isDomainError(error)) return { ok: false, error: error.message };
+async function failed(error: unknown): Promise<{ ok: false; error: string }> {
+  const { locale, t } = await getI18n();
+  const message = localizeError(error, locale);
+  if (message) return { ok: false, error: message };
   console.error(JSON.stringify({ level: "error", msg: "settings_action_failed", error: String(error) }));
-  return { ok: false, error: "Something went wrong. Nothing was changed." };
+  return { ok: false, error: t.errors.generic };
+}
+
+async function succeeded(pick: (t: Awaited<ReturnType<typeof getI18n>>["t"]) => string): Promise<SettingsResult> {
+  const { t } = await getI18n();
+  return { ok: true, message: pick(t) };
 }
 
 export async function renameWorkspaceAction(slug: string, name: string): Promise<SettingsResult> {
@@ -82,7 +91,7 @@ export async function renameWorkspaceAction(slug: string, name: string): Promise
     const ctx = await requireWorkspace(slug);
     await renameWorkspace(ctx, name);
     revalidatePath(`/w/${slug}`, "layout");
-    return { ok: true, message: "Workspace name saved." };
+    return succeeded((t) => t.settings.general.nameSaved);
   } catch (error) {
     return failed(error);
   }
@@ -101,29 +110,71 @@ export async function deleteWorkspaceAction(slug: string, confirmation: string):
   redirect(destination);
 }
 
+export async function uploadWorkspaceIconAction(slug: string, formData: FormData): Promise<SettingsResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await setWorkspaceIcon(ctx, formData.get("image"));
+    revalidatePath(`/w/${slug}`, "layout");
+    return succeeded((t) => t.settings.image.saved);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+export async function removeWorkspaceIconAction(slug: string): Promise<SettingsResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await setWorkspaceIcon(ctx, null);
+    revalidatePath(`/w/${slug}`, "layout");
+    return succeeded((t) => t.settings.image.removed);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+export async function uploadAvatarAction(slug: string, formData: FormData): Promise<SettingsResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await setAvatar(ctx.userId, formData.get("image"));
+    revalidatePath(`/w/${slug}`, "layout");
+    return succeeded((t) => t.settings.image.saved);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+export async function removeAvatarAction(slug: string): Promise<SettingsResult> {
+  try {
+    const ctx = await requireWorkspace(slug);
+    await setAvatar(ctx.userId, null);
+    revalidatePath(`/w/${slug}`, "layout");
+    return succeeded((t) => t.settings.image.removed);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
 export type InviteActionResult = { ok: true; email: string; inviteUrl: string; emailed: boolean } | { ok: false; error: string };
 
 export async function inviteMemberAction(slug: string, email: string, role: string): Promise<InviteActionResult> {
   try {
     const ctx = await requireWorkspace(slug);
-    const result = await inviteMember(ctx, { email, role });
+    const result = await inviteMember(ctx, { email, role }, (await getI18n()).locale);
     revalidatePath(`/w/${slug}/settings/team`);
     return { ok: true, ...result };
   } catch (error) {
-    const r = failed(error);
-    return r.ok ? { ok: false, error: "Something went wrong." } : r;
+    return failed(error);
   }
 }
 
 export async function resendInvitationAction(slug: string, invitationId: string): Promise<InviteActionResult> {
   try {
     const ctx = await requireWorkspace(slug);
-    const result = await resendInvitation(ctx, invitationId);
+    const result = await resendInvitation(ctx, invitationId, (await getI18n()).locale);
     revalidatePath(`/w/${slug}/settings/team`);
     return { ok: true, ...result };
   } catch (error) {
-    const r = failed(error);
-    return r.ok ? { ok: false, error: "Something went wrong." } : r;
+    return failed(error);
   }
 }
 
@@ -132,7 +183,7 @@ export async function revokeInvitationAction(slug: string, invitationId: string)
     const ctx = await requireWorkspace(slug);
     await revokeInvitation(ctx, invitationId);
     revalidatePath(`/w/${slug}/settings/team`);
-    return { ok: true, message: "Invitation revoked. Its seat is free again." };
+    return succeeded((t) => t.settings.team.revoked);
   } catch (error) {
     return failed(error);
   }
@@ -143,11 +194,11 @@ const RoleSchema = z.enum(["owner", "admin", "member", "viewer"]);
 export async function changeRoleAction(slug: string, memberId: string, role: string): Promise<SettingsResult> {
   try {
     const parsed = RoleSchema.safeParse(role);
-    if (!parsed.success) return { ok: false, error: "Unknown role." };
+    if (!parsed.success) return { ok: false, error: (await getI18n()).t.settings.team.unknownRole };
     const ctx = await requireWorkspace(slug);
     await changeMemberRole(ctx, memberId, parsed.data);
     revalidatePath(`/w/${slug}`, "layout");
-    return { ok: true, message: "Role updated." };
+    return succeeded((t) => t.settings.team.roleUpdated);
   } catch (error) {
     return failed(error);
   }
@@ -160,7 +211,7 @@ export async function removeMemberAction(slug: string, memberId: string): Promis
     left = (await removeMember(ctx, memberId)).left;
     if (!left) {
       revalidatePath(`/w/${slug}/settings/team`);
-      return { ok: true, message: "Removed from the workspace." };
+      return succeeded((t) => t.settings.team.removed);
     }
   } catch (error) {
     return failed(error);
@@ -173,7 +224,7 @@ export async function updateProfileAction(slug: string, name: string): Promise<S
     const ctx = await requireWorkspace(slug);
     await updateProfileName(ctx.userId, name);
     revalidatePath(`/w/${slug}`, "layout");
-    return { ok: true, message: "Profile saved." };
+    return succeeded((t) => t.settings.profile.saved);
   } catch (error) {
     return failed(error);
   }
@@ -184,7 +235,7 @@ export async function changePasswordAction(slug: string, current: string, next: 
     const ctx = await requireWorkspace(slug);
     checkRateLimit(`password:${ctx.userId}`, 8);
     await changePassword(ctx.userId, { current, next });
-    return { ok: true, message: "Password updated." };
+    return succeeded((t) => t.settings.profile.passwordUpdated);
   } catch (error) {
     return failed(error);
   }

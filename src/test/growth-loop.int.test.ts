@@ -34,6 +34,7 @@ beforeAll(async () => {
     workspaceId: ws!.id,
     workspaceSlug: ws!.slug,
     workspaceName: ws!.name,
+    workspaceIconUrl: null,
     role: "owner",
     autonomyMode: ws!.autonomyMode,
     isDemo: true, isGuest: false,

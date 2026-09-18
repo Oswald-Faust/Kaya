@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getI18n } from "@/i18n/server";
+import { fmt, plural } from "@/i18n/format";
 import { and, count, eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,6 +12,7 @@ import { StrategyTeaser } from "@/components/product/strategy-teaser";
 import { requireOnboardingAccount } from "@/server/context";
 import { db } from "@/server/db/client";
 import { businessFacts, integrations } from "@/server/db/schema";
+import { localizedGoalTitle } from "@/server/domain/strategy/goals";
 import { getRun } from "@/server/services/agent-runs";
 import { getPlanState } from "@/server/services/billing";
 import { latestRun } from "@/server/services/onboarding";
@@ -16,7 +20,10 @@ import { getCurrentStrategy } from "@/server/services/strategy";
 import { getActiveGoal, getPrimaryProduct } from "@/server/services/workspace";
 import { formatUsd } from "@/lib/format";
 
-export const metadata = { title: "Your first strategy" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.onboarding.strategy.metaTitle };
+}
 
 export default async function StrategyOnboardingPage({ params }: PageProps<"/start/[workspace]/strategy">) {
   const { workspace } = await params;
@@ -37,6 +44,8 @@ export default async function StrategyOnboardingPage({ params }: PageProps<"/sta
   const runDetail = inFlight ? await getRun(ctx.workspaceId, run.id) : null;
   const fullAccess = ctx.isDemo || plan.fullAccess;
   const next = fullAccess ? `/w/${ctx.workspaceSlug}` : `/start/${ctx.workspaceSlug}/plan`;
+  const { t, locale } = await getI18n();
+  const so = t.onboarding.strategy;
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pb-28">
@@ -48,21 +57,21 @@ export default async function StrategyOnboardingPage({ params }: PageProps<"/sta
             <div className="max-w-3xl">
               <p className="inline-flex items-center gap-2 rounded-full bg-lime-soft px-3 py-1.5 text-sm text-lime-deep">
                 <Sparkles className="size-3.5" />
-                Strategy v{strategy.current.version} · {facts?.n ? `built from ${facts.n} confirmed fact${facts.n === 1 ? "" : "s"}` : "built from unreviewed analysis"}
+                {fmt(so.badge, { version: strategy.current.version, source: facts?.n ? plural(locale, facts.n, so.builtFrom) : so.unreviewed })}
               </p>
               <h1 className="mt-4 text-[clamp(32px,3.6vw,48px)] leading-[1.05] font-medium tracking-[-0.04em]">{strategy.current.summary}</h1>
               {!facts?.n && (
                 <p className="mt-3 text-sm text-muted">
-                  You skipped review, so audiences and features are treated as hypotheses.{" "}
+                  {so.skippedBefore}{" "}
                   <Link href={`/start/${ctx.workspaceSlug}/confirm`} className="underline underline-offset-2 hover:text-ink">
-                    Confirm facts
+                    {so.confirmFacts}
                   </Link>{" "}
-                  and rebuild to sharpen it.
+                  {so.skippedAfter}
                 </p>
               )}
             </div>
             <Link href={next} className="inline-flex h-12 items-center gap-2 rounded-xl bg-ink px-5 text-[15px] font-medium text-white hover:bg-ink-hover">
-              {fullAccess ? "Open Command Center" : "Unlock full strategy"} <ArrowRight className="size-4" />
+              {fullAccess ? so.openCommand : so.unlock} <ArrowRight className="size-4" />
             </Link>
           </div>
           <div className="mt-8">
@@ -81,10 +90,10 @@ export default async function StrategyOnboardingPage({ params }: PageProps<"/sta
           initialSteps={(runDetail?.steps ?? []).map((s) => ({ id: s.id, seq: s.seq, kind: s.kind, title: s.title, detail: s.detail, status: s.status }))}
           lastError={run?.status === "failed" ? run.error : null}
           inputs={{
-            goal: goal.title,
-            budget: goal.monthlyBudget > 0 ? `${formatUsd(goal.monthlyBudget)}/month` : "Organic only",
+            goal: localizedGoalTitle(goal, locale),
+            budget: goal.monthlyBudget > 0 ? fmt(so.perMonth, { amount: formatUsd(goal.monthlyBudget, {}, locale) }) : so.organicOnly,
             facts: String(facts?.n ?? 0),
-            data: connected?.n ? `${connected.n} integration${connected.n === 1 ? "" : "s"}` : "None yet",
+            data: connected?.n ? plural(locale, connected.n, so.integrations) : so.noneYet,
           }}
         />
       )}

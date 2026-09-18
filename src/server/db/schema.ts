@@ -103,6 +103,18 @@ export const users = pgTable("users", {
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   /** Set when the user finishes or skips the first-login product tour. */
   tourCompletedAt: timestamp("tour_completed_at", { withTimezone: true }),
+  /** "en" | "fr". Null follows the browser until the user picks a language. */
+  locale: text("locale"),
+  createdAt: createdAt(),
+});
+
+/** Small uploaded images (avatars, workspace icons), resized client-side to 256px. Ids are unguessable. */
+export const images = pgTable("images", {
+  id: id(),
+  contentType: text("content_type").notNull(),
+  /** base64 of the bytes; images are capped at 512 KB. */
+  data: text("data").notNull(),
+  uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: createdAt(),
 });
 
@@ -172,6 +184,8 @@ export const workspaces = pgTable(
     slug: text("slug").notNull(),
     autonomyMode: autonomyMode("autonomy_mode").notNull().default("copilot"),
     isDemo: boolean("is_demo").notNull().default(false),
+    /** Uploaded icon, served from /api/images/:id. Null shows the name's initials. */
+    iconUrl: text("icon_url"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("workspaces_org_slug_idx").on(t.organizationId, t.slug)],

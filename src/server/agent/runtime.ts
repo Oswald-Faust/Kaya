@@ -1,14 +1,20 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { agentRuns, campaigns, creativeAssets, experiments } from "@/server/db/schema";
+import { agentRuns, campaigns, creativeAssets, experiments, products } from "@/server/db/schema";
 import { classifyIntent, type Intent } from "@/server/domain/agent/intent";
 import { CHANNELS, channelLabel, isChannel } from "@/server/domain/channels";
-import { isDomainError } from "@/server/domain/errors";
+import { localizedError } from "@/i18n/errors";
+import { DomainError, isDomainError } from "@/server/domain/errors";
+import { assetKindFor } from "@/server/domain/content/draft";
 import { allocateBudget } from "@/server/domain/strategy/allocation";
 import type { AgentPlan } from "@/server/domain/types";
-import { currentChannelScores, monthlyBudgetFor } from "@/server/services/experiments";
+import { currentChannelScores, ensureRateExperimentVariants, monthlyBudgetFor } from "@/server/services/experiments";
 import { getGovernance } from "@/server/services/policy-store";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { dictionaries } from "@/i18n/dictionaries";
+import { fmt as t } from "@/i18n/format";
+import { translateDomainText } from "@/i18n/domain-text";
 import { experimentKey, formatDelta, formatPct, formatUsd } from "@/lib/format";
 import { newId } from "@/lib/ids";
 import { invokeTool, type InvokeResult } from "./executor";
@@ -23,6 +29,8 @@ export interface StartRunInput {
   userId: string;
   isDemo: boolean;
   goal: string;
+  /** The founder's language: the agent writes its messages in it. */
+  locale?: Locale;
 }
 
 type Outputs = Record<string, unknown>;
@@ -61,7 +69,10 @@ const PLANS: Record<Intent, AgentPlan["steps"]> = {
 export async function startGoalRun(input: StartRunInput): Promise<string> {
   const runId = newId("run");
   const now = new Date();
-  const { intent, amount, label } = classifyIntent(input.goal);
+  const { intent, amount } = classifyIntent(input.goal);
+  const locale = input.locale ?? DEFAULT_LOCALE;
+  const c = dictionaries[locale].agentRun;
+  const label = c.intents[intent];
 
   await db.insert(agentRuns).values({
     id: runId,
@@ -94,21 +105,18 @@ export async function startGoalRun(input: StartRunInput): Promise<string> {
     const confirmed = ((memory.output?.confirmed as unknown[]) ?? []).length;
     const unconfirmed = ((memory.output?.unconfirmed as unknown[]) ?? []).length;
     await rec.finish(contextStep, "done", {
-      detail: `${confirmed} confirmed facts used; ${unconfirmed} unconfirmed inferences excluded from decisions. Metrics through ${String(kpis.output?.asOf ?? "—")}.`,
+      detail: t(c.contextDetail, { confirmed, unconfirmed, asOf: String(kpis.output?.asOf ?? "—") }),
     });
 
     const plan: AgentPlan = {
       objective: label,
-      assumptions: [
-        "Only confirmed facts are treated as true.",
-        "All spend and publishing actions go through workspace policy before running.",
-      ],
+      assumptions: [...c.assumptions],
       steps: PLANS[intent],
     };
     await rec.setRun({ plan, status: "running" });
     await rec.step("plan", `Planned: ${label.toLowerCase()}`, { status: "done", detail: plan.steps.map((s) => s.title).join(" → "), output: { plan } });
 
-    const result = await HANDLERS[intent]({ ctx, rec, kpis: kpis.output ?? {}, amount });
+    const result = await HANDLERS[intent]({ ctx, rec, kpis: kpis.output ?? {}, amount, locale, c });
     await rec.message("agent", result.message);
     await rec.setRun(
       result.awaitingApproval
@@ -116,7 +124,7 @@ export async function startGoalRun(input: StartRunInput): Promise<string> {
         : { status: "completed", finishedAt: new Date(), result: { summary: result.message } },
     );
   } catch (error) {
-    const message = isDomainError(error) ? error.message : "The run stopped because of an unexpected error.";
+    const message = isDomainError(error) ? error.message : c.unexpectedError;
     if (!isDomainError(error)) console.error(JSON.stringify({ level: "error", msg: "run_failed", runId, error: String(error) }));
     await rec.step("observation", "Run stopped", { status: "failed", detail: message });
     await rec.setRun({ status: "failed", error: message, finishedAt: new Date() });
@@ -129,6 +137,9 @@ interface HandlerArgs {
   rec: RunRecorder;
   kpis: Outputs;
   amount: number | null;
+  locale: Locale;
+  /** The agentRun dictionary in the founder's language. */
+  c: Copy;
 }
 
 async function call(ctx: ToolContext, rec: RunRecorder, tool: string, input: Record<string, unknown>, reason: string, parentStep?: string) {
@@ -143,10 +154,15 @@ async function call(ctx: ToolContext, rec: RunRecorder, tool: string, input: Rec
   return { ...result, output, stepId } as InvokeResult & { output?: Outputs; stepId: string };
 }
 
+/** A channel name in the founder's language. */
+function label(channel: string, locale: Locale): string {
+  return dictionaries[locale].common.channels[channel] ?? channelLabel(channel);
+}
+
 type ChannelStat = { channel: string; visits: number; signups: number; paid: number; spend: number; signupRate: number | null; cac: number | null };
 
 const HANDLERS: Record<Intent, (args: HandlerArgs) => Promise<HandlerResult>> = {
-  async diagnose({ ctx, rec, kpis }) {
+  async diagnose({ ctx, rec, kpis, locale, c }) {
     const b14 = await call(ctx, rec, "analytics.channel_breakdown", { days: 14 }, "Break down the last two weeks by channel");
     const b7 = await call(ctx, rec, "analytics.channel_breakdown", { days: 7 }, "Break down the last week by channel");
     const last = new Map(((b7.output?.channels as ChannelStat[]) ?? []).map((c) => [c.channel, c]));
@@ -165,20 +181,19 @@ const HANDLERS: Record<Intent, (args: HandlerArgs) => Promise<HandlerResult>> = 
     const queue = await call(ctx, rec, "experiments.rank_queue", { limit: 3 }, "Rank what to do next");
     const top = ((queue.output?.ranked as { key: string; name: string; suppressedBy: string | null }[]) ?? []).find((r) => !r.suppressedBy);
 
-    const direction = (change.signups ?? 0) >= 0 ? "rose" : "fell";
     const driver = deltas[0];
     const lines = [
-      `Signups ${direction} ${formatDelta(change.signups)} week over week (${prev.signups ?? "—"} → ${cur.signups ?? "—"}).`,
+      t((change.signups ?? 0) >= 0 ? c.diagnose.rose : c.diagnose.fell, { delta: formatDelta(change.signups), previous: prev.signups ?? "—", current: cur.signups ?? "—" }),
       driver
-        ? `${channelLabel(driver.channel)} accounts for most of it: ${driver.previous} → ${driver.current} signups.`
-        : "No single channel explains the change.",
-      `Blended signup rate moved from ${formatPct(prev.signupRate)} to ${formatPct(cur.signupRate)}; paying customers ${prev.paidConversions ?? "—"} → ${cur.paidConversions ?? "—"}.`,
+        ? t(c.diagnose.driver, { channel: label(driver.channel, locale), previous: driver.previous, current: driver.current })
+        : c.diagnose.noDriver,
+      t(c.diagnose.rates, { previous: formatPct(prev.signupRate), current: formatPct(cur.signupRate), previousPaid: prev.paidConversions ?? "—", currentPaid: cur.paidConversions ?? "—" }),
     ];
-    if (top) lines.push(`Recommended next step: ${top.key} “${top.name}”.`);
+    if (top) lines.push(t(c.diagnose.next, { key: top.key, name: top.name }));
     return { message: lines.join(" "), awaitingApproval: false };
   },
 
-  async scale({ ctx, rec }) {
+  async scale({ ctx, rec, locale, c }) {
     const breakdown = await call(ctx, rec, "analytics.channel_breakdown", { days: 14 }, "Measure paid channel efficiency over 14 days");
     const stats = new Map(((breakdown.output?.channels as ChannelStat[]) ?? []).map((c) => [c.channel, c]));
     const active = await db
@@ -200,7 +215,7 @@ const HANDLERS: Record<Intent, (args: HandlerArgs) => Promise<HandlerResult>> = 
     const best = candidates[0];
     if (!best) {
       await rec.step("observation", "No paid campaign is clearly beating its target", { status: "done" });
-      return { message: "No active paid campaign is beating its CAC target with enough evidence to scale. I would rather run the next experiment than add spend.", awaitingApproval: false };
+      return { message: c.scale.none, awaitingApproval: false };
     }
 
     const { policy } = await getGovernance(ctx.workspaceId);
@@ -212,19 +227,19 @@ const HANDLERS: Record<Intent, (args: HandlerArgs) => Promise<HandlerResult>> = 
       detail: `CAC ${formatUsd(best.cac)} over 14 days vs a ${formatUsd(best.target)} target (${experimentKey(best.experiment.number)}).`,
     });
     if (proposed <= current) {
-      return { message: `${best.campaign.name} is efficient, but it is already at the $${policy.maxDailySpend}/day cap. Raise the cap in Settings if you want to scale further.`, awaitingApproval: false };
+      return { message: t(c.scale.atCap, { name: best.campaign.name, cap: formatUsd(policy.maxDailySpend, {}, locale) }), awaitingApproval: false };
     }
 
     const stepId = await rec.step("tool", `Increase “${best.campaign.name}” to $${proposed}/day`);
-    const reason = `CAC is ${formatUsd(best.cac)} over the last 14 days, ${Math.round(under * 100)}% below the ${formatUsd(best.target)} target validated by ${experimentKey(best.experiment.number)}.`;
+    const reason = t(c.scale.reason, { cac: formatUsd(best.cac, {}, locale), pct: Math.round(under * 100), target: formatUsd(best.target, {}, locale), key: experimentKey(best.experiment.number) });
     const result = await invokeTool("ads.update_daily_budget", { campaignId: best.campaign.id, dailyBudget: proposed }, ctx, { reason, stepId, experimentId: best.experiment.id });
     return finishAction(rec, stepId, result, {
-      waiting: `I want to increase “${best.campaign.name}” from $${current}/day to $${proposed}/day. ${reason} This exceeds the automatic increase limit, so it is waiting for your approval.`,
-      done: `Increased “${best.campaign.name}” from $${current}/day to $${proposed}/day. ${reason}`,
-    });
+      waiting: t(c.scale.waiting, { name: best.campaign.name, current: formatUsd(current, {}, locale), proposed: formatUsd(proposed, {}, locale), reason }),
+      done: t(c.scale.done, { name: best.campaign.name, current: formatUsd(current, {}, locale), proposed: formatUsd(proposed, {}, locale), reason }),
+    }, c);
   },
 
-  async allocate({ ctx, rec, amount }) {
+  async allocate({ ctx, rec, amount, locale, c }) {
     const budget = amount ?? (await monthlyBudgetFor(ctx.workspaceId, ctx.productId));
     const scores = await currentChannelScores(ctx.workspaceId, ctx.productId);
     await rec.step("tool", "Read channel fit from the current strategy", { status: "done", output: { scores } });
@@ -238,69 +253,160 @@ const HANDLERS: Record<Intent, (args: HandlerArgs) => Promise<HandlerResult>> = 
     await rec.step("observation", `Split ${formatUsd(budget)} across ${allocation.lines.length} channels`, { status: "done", output: { allocation } });
 
     if (allocation.lines.length === 0) {
-      return { message: `${formatUsd(budget)} is not enough to fund a paid test that produces a readable signal. Put it into organic work: comparison pages and community answers.`, awaitingApproval: false };
+      return { message: t(c.allocate.tooSmall, { budget: formatUsd(budget, {}, locale) }), awaitingApproval: false };
     }
-    const lines = allocation.lines.map((l) => `${channelLabel(l.channel)} ${formatUsd(l.amount)} (${Math.round(l.share * 100)}%) — ${l.reason}`);
-    const skipped = allocation.excluded.slice(0, 3).map((e) => `${channelLabel(e.channel)}: ${e.reason.toLowerCase()}`);
+    const lines = allocation.lines.map((l) => t(c.allocate.line, { channel: label(l.channel, locale), amount: formatUsd(l.amount, {}, locale), share: Math.round(l.share * 100), reason: translateDomainText(l.reason, locale) }));
+    const skipped = allocation.excluded.slice(0, 3).map((e) => `${label(e.channel, locale)}: ${translateDomainText(e.reason, locale).toLowerCase()}`);
     return {
-      message: `Here is how I would split ${formatUsd(budget)}: ${lines.join("; ")}. Not funded: ${skipped.join("; ")}. Nothing is spent until you approve the individual launches.`,
+      message: t(c.allocate.split, { budget: formatUsd(budget, {}, locale), lines: lines.join(" ; "), skipped: skipped.join(" ; ") }),
       awaitingApproval: false,
     };
   },
 
-  async grow({ ctx, rec }) {
+  async grow({ ctx, rec, locale, c }) {
     const queue = await call(ctx, rec, "experiments.rank_queue", { limit: 5 }, "Rank the experiment queue");
     const ranked = (queue.output?.ranked as { id: string; key: string; name: string; score: number; suppressedBy: string | null; boostedBy: string[] }[]) ?? [];
     const open = ranked.filter((r) => !r.suppressedBy);
     const top = open[0];
     if (!top) {
-      return { message: "The queue is empty. Ask me to research new opportunities or confirm the strategy first.", awaitingApproval: false };
+      return { message: c.grow.empty, awaitingApproval: false };
     }
 
     const exp = await db.query.experiments.findFirst({ where: and(eq(experiments.id, top.id), eq(experiments.workspaceId, ctx.workspaceId)) });
-    const shortlist = open.slice(0, 3).map((r) => `${r.key} ${r.name} (score ${r.score})`).join("; ");
-    const boosted = top.boostedBy[0] ? ` It ranks first partly because of ${top.boostedBy[0]}.` : "";
+    const shortlist = open.slice(0, 3).map((r) => t(c.grow.shortlistItem, { key: r.key, name: r.name, score: r.score })).join(" ; ");
+    const boosted = top.boostedBy[0] ? t(c.grow.boosted, { learning: top.boostedBy[0] }) : "";
 
-    if (exp && (exp.type === "seo_page" || exp.type === "landing_page")) {
-      const [asset] = await db
-        .select()
-        .from(creativeAssets)
-        .where(and(eq(creativeAssets.experimentId, exp.id), eq(creativeAssets.workspaceId, ctx.workspaceId), inArray(creativeAssets.kind, ["landing_page"])))
-        .orderBy(desc(creativeAssets.createdAt))
-        .limit(1);
-      if (asset) {
-        const stepId = await rec.step("tool", `Publish the page for ${top.key}`);
-        const path = `/${asset.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
-        const result = await invokeTool("pages.publish", { assetId: asset.id, path, experimentId: exp.id }, ctx, { reason: exp.rationale, stepId, experimentId: exp.id });
-        return finishAction(rec, stepId, result, {
-          waiting: `Top of the queue: ${shortlist}.${boosted} The page draft for ${top.key} is ready; publishing it is waiting for your approval.`,
-          done: `Published the page for ${top.key} and started the experiment.${boosted}`,
-        });
-      }
-    }
+    if (exp) return executeExperiment({ ctx, rec, locale, c, exp, prefix: `${t(c.grow.shortlistLead, { shortlist })}${boosted} ` });
 
-    if (exp && isChannel(exp.channel) && CHANNELS[exp.channel].kind === "paid" && exp.budget > 0) {
-      const { policy } = await getGovernance(ctx.workspaceId);
-      const daily = Math.min(policy.maxDailySpend, Math.ceil(exp.budget / exp.durationDays));
-      const stepId = await rec.step("tool", `Launch ${top.key} on ${channelLabel(exp.channel)}`);
-      const result = await invokeTool(
-        "ads.launch_campaign",
-        { experimentId: exp.id, name: exp.name, channel: exp.channel, dailyBudget: daily },
-        ctx,
-        { reason: exp.rationale, stepId, experimentId: exp.id },
-      );
-      return finishAction(rec, stepId, result, {
-        waiting: `Top of the queue: ${shortlist}. Launching ${top.key} at $${daily}/day needs your approval.`,
-        done: `Launched ${top.key} at $${daily}/day.`,
-      });
-    }
-
-    await rec.step("observation", `${top.key} needs founder time rather than an automated launch`, { status: "done" });
-    return { message: `Top of the queue: ${shortlist}. ${top.key} is not something I can launch through a connected integration; it is in Experiments with a ready brief.`, awaitingApproval: false };
+    return { message: t(c.grow.manual, { shortlist, key: top.key }), awaitingApproval: false };
   },
 };
 
-async function finishAction(rec: RunRecorder, stepId: string, result: InvokeResult, copy: { waiting: string; done: string }): Promise<HandlerResult> {
+type ExperimentRow = typeof experiments.$inferSelect;
+type Copy = (typeof dictionaries)[Locale]["agentRun"];
+
+/**
+ * Takes one experiment all the way: draft what it needs, then publish, launch
+ * or hand it back when no connected tool can run it. Governance still decides
+ * whether each external action needs approval.
+ */
+async function executeExperiment(args: { ctx: ToolContext; rec: RunRecorder; locale: Locale; c: Copy; exp: ExperimentRow; prefix?: string }): Promise<HandlerResult> {
+  const { ctx, rec, locale, c, exp } = args;
+  const key = experimentKey(exp.number);
+  const prefix = args.prefix ?? "";
+  const e = c.execute;
+
+  if (exp.status === "running") return { message: prefix + t(e.alreadyRunning, { key }), awaitingApproval: false };
+
+  let assetId: string | null = null;
+  let draftLine = "";
+  const kind = assetKindFor(exp.type, exp.channel);
+  if (kind) {
+    const draft = await call(ctx, rec, "content.draft_asset", { experimentId: exp.id, locale }, "Draft the content this experiment needs");
+    if (draft.status === "succeeded") {
+      assetId = (draft.output?.assetId as string) ?? null;
+      draftLine = `${t(draft.output?.reused ? e.reused : e.drafted, { title: String(draft.output?.title ?? "") })} `;
+    } else if (draft.status === "failed") {
+      return { message: prefix + t(e.noIntegration, { key, reason: draft.error }), awaitingApproval: false };
+    }
+  }
+
+  const lead = prefix + draftLine;
+
+  if (kind === "landing_page" && assetId) {
+    const stepId = await rec.step("tool", `Publish the page for ${key}`);
+    const path = `/${exp.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "page"}`;
+    const result = await invokeTool("pages.publish", { assetId, path, experimentId: exp.id }, ctx, { reason: exp.rationale, stepId, experimentId: exp.id });
+    if (result.status === "failed") return { message: lead + t(e.noIntegration, { key, reason: result.error }), awaitingApproval: false };
+    return finishAction(rec, stepId, result, { waiting: lead + t(c.grow.pageWaiting, { shortlist: key, boosted: "", key }), done: lead + t(c.grow.pageDone, { key, boosted: "" }) }, c);
+  }
+
+  if (isChannel(exp.channel) && CHANNELS[exp.channel].kind === "paid" && exp.budget > 0) {
+    const { policy } = await getGovernance(ctx.workspaceId);
+    const daily = Math.min(policy.maxDailySpend, Math.ceil(exp.budget / exp.durationDays));
+    const stepId = await rec.step("tool", `Launch ${key} on ${channelLabel(exp.channel)}`);
+    const result = await invokeTool("ads.launch_campaign", { experimentId: exp.id, name: exp.name, channel: exp.channel, dailyBudget: daily }, ctx, { reason: exp.rationale, stepId, experimentId: exp.id });
+    if (result.status === "failed") return { message: lead + t(e.noIntegration, { key, reason: result.error }), awaitingApproval: false };
+    return finishAction(rec, stepId, result, {
+      waiting: lead + t(c.grow.launchWaiting, { shortlist: key, key, daily: formatUsd(daily, {}, locale) }),
+      done: lead + t(c.grow.launchDone, { key, daily: formatUsd(daily, {}, locale) }),
+    }, c);
+  }
+
+  if (kind === "social_post" && assetId && (exp.channel === "x_organic" || exp.channel === "linkedin")) {
+    const asset = await db.query.creativeAssets.findFirst({ where: eq(creativeAssets.id, assetId) });
+    const stepId = await rec.step("tool", `Publish the post for ${key}`);
+    const result = await invokeTool(
+      "social.publish_post",
+      { text: (asset?.body ?? exp.hypothesis).slice(0, 280), channel: exp.channel, experimentId: exp.id },
+      ctx,
+      { reason: exp.rationale, stepId, experimentId: exp.id },
+    );
+    if (result.status === "failed") return { message: lead + t(e.noIntegration, { key, reason: result.error }), awaitingApproval: false };
+    return finishAction(rec, stepId, result, { waiting: lead + t(e.postWaiting, { key }), done: lead + t(e.postDone, { key }) }, c);
+  }
+
+  if (kind === "email") return { message: lead + t(e.emailReady, { key }), awaitingApproval: false };
+
+  await rec.step("observation", `${key} needs founder time rather than an automated launch`, { status: "done" });
+  return { message: lead + t(e.manual, { key }), awaitingApproval: false };
+}
+
+/** Runs the one experiment the founder picked, instead of letting the agent choose. */
+export async function startExperimentRun(input: Omit<StartRunInput, "goal"> & { experimentId: string }): Promise<string> {
+  const locale = input.locale ?? DEFAULT_LOCALE;
+  const c = dictionaries[locale].agentRun;
+  const now = new Date();
+  const runId = newId("run");
+  const exp = await db.transaction(async (tx) => {
+    await tx.select({ id: products.id }).from(products).where(and(eq(products.id, input.productId), eq(products.workspaceId, input.workspaceId))).for("update");
+    const experiment = await tx.query.experiments.findFirst({ where: and(eq(experiments.id, input.experimentId), eq(experiments.workspaceId, input.workspaceId), eq(experiments.productId, input.productId)) });
+    if (!experiment) throw new DomainError("not_found", c.execute.notFound);
+    if (experiment.status === "archived") throw localizedError("conflict", "experimentArchived");
+    await ensureRateExperimentVariants(tx, experiment);
+    await tx.insert(agentRuns).values({
+      id: runId, workspaceId: input.workspaceId, productId: input.productId,
+      kind: "goal", goal: t(c.execute.goal, { key: experimentKey(experiment.number), name: experiment.name }),
+      status: "planning", planner: "deterministic", createdBy: input.userId, startedAt: now,
+    });
+    return experiment;
+  });
+  const key = experimentKey(exp.number);
+  const goal = t(c.execute.goal, { key, name: exp.name });
+
+  const rec = await RunRecorder.open(input.workspaceId, runId);
+  const ctx: ToolContext = { workspaceId: input.workspaceId, productId: input.productId, runId, actor: { type: "agent", id: ORCHESTRATOR_ID }, isDemo: input.isDemo, now };
+
+  try {
+    await rec.message("user", goal);
+    const plan: AgentPlan = {
+      objective: t(c.execute.objective, { key, name: exp.name }),
+      assumptions: [...c.assumptions],
+      steps: [
+        { id: "read", title: c.execute.planRead, why: c.execute.planReadWhy, tool: "memory.read_business_context", risk: "R0" },
+        { id: "draft", title: c.execute.planDraft, why: c.execute.planDraftWhy, tool: "content.draft_asset", risk: "R1" },
+        { id: "execute", title: c.execute.planExecute, why: c.execute.planExecuteWhy, risk: "R2" },
+      ],
+    };
+    await rec.setRun({ plan, status: "running" });
+
+    const contextStep = await rec.step("context", "Retrieved business context");
+    await call(ctx, rec, "memory.read_business_context", {}, "Ground the plan in confirmed facts", contextStep);
+    await rec.finish(contextStep, "done");
+
+    const result = await executeExperiment({ ctx, rec, locale, c, exp });
+    await rec.message("agent", result.message);
+    await rec.setRun(result.awaitingApproval ? { status: "awaiting_approval" } : { status: "completed", finishedAt: new Date(), result: { summary: result.message } });
+  } catch (error) {
+    const message = isDomainError(error) ? error.message : c.unexpectedError;
+    if (!isDomainError(error)) console.error(JSON.stringify({ level: "error", msg: "experiment_run_failed", runId, error: String(error) }));
+    await rec.step("observation", "Run stopped", { status: "failed", detail: message });
+    await rec.setRun({ status: "failed", error: message, finishedAt: new Date() });
+  }
+  return runId;
+}
+
+async function finishAction(rec: RunRecorder, stepId: string, result: InvokeResult, copy: { waiting: string; done: string }, c: Copy): Promise<HandlerResult> {
   switch (result.status) {
     case "awaiting_approval":
       await rec.finish(stepId, "waiting", { output: { approvalId: result.approvalId, toolCallId: result.toolCallId } });
@@ -311,9 +417,9 @@ async function finishAction(rec: RunRecorder, stepId: string, result: InvokeResu
       return { message: copy.done, awaitingApproval: false };
     case "blocked":
       await rec.finish(stepId, "failed", { detail: `Blocked by policy: ${result.decision.reasons.join("; ")}` });
-      return { message: `I did not do this: ${result.decision.reasons.join("; ")}.`, awaitingApproval: false };
+      return { message: t(c.blocked, { reasons: result.decision.reasons.join("; ") }), awaitingApproval: false };
     case "failed":
       await rec.finish(stepId, "failed", { detail: result.error });
-      return { message: `The action failed: ${result.error}`, awaitingApproval: false };
+      return { message: t(c.failed, { error: result.error }), awaitingApproval: false };
   }
 }

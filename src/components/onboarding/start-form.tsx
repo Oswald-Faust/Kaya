@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { ArrowRight } from "lucide-react";
 import { startAnalysisAction, type FormState } from "@/app/(onboarding)/start/actions";
 import { Spinner } from "@/components/ui/button";
+import { useI18n } from "@/i18n/client";
 
 export function StartForm({
   autoFocus = true,
@@ -18,6 +19,8 @@ export function StartForm({
   /** Example domains that fill the URL field when clicked. */
   suggestions?: string[];
 }) {
+  const { t } = useI18n();
+  const f = t.hero.startForm;
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const errorId = useId();
@@ -31,7 +34,7 @@ export function StartForm({
       {mode === "url" ? (
         <>
           <label htmlFor={inputId} className="sr-only">
-            Product URL
+            {f.urlLabel}
           </label>
           <div className="flex flex-col gap-2 rounded-lg border border-line-strong bg-surface p-1.5 focus-within:border-agent focus-within:shadow-[0_0_0_3px_var(--color-agent-soft)] sm:flex-row sm:items-center">
             <input
@@ -44,16 +47,16 @@ export function StartForm({
               autoFocus={autoFocus}
               required
               spellCheck={false}
-              placeholder="https://yourproduct.com"
+              placeholder={f.urlPlaceholder}
               aria-invalid={Boolean(state.error) || undefined}
               aria-describedby={state.error ? errorId : undefined}
               className="h-11 min-w-0 flex-1 bg-transparent px-3 text-lg text-ink outline-none placeholder:text-subtle"
             />
-            <Submit label="Analyze my product" />
+            <Submit label={f.analyze} pendingLabel={f.starting} />
           </div>
           {suggestions?.length ? (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
-              <span>Try</span>
+              <span>{f.try}</span>
               {suggestions.map((domain) => (
                 <button
                   key={domain}
@@ -71,36 +74,36 @@ export function StartForm({
             </div>
           ) : null}
           <button type="button" onClick={() => setMode("manual")} className={`mt-3 text-sm underline underline-offset-4 ${link}`}>
-            No website yet? Describe it manually
+            {f.noWebsite}
           </button>
         </>
       ) : (
         <div className="space-y-3 rounded-lg border border-line-strong bg-surface p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="text-xs font-medium text-muted">Product name</span>
+              <span className="text-xs font-medium text-muted">{f.productName}</span>
               <input name="name" required className="mt-1 h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-agent" />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-muted">Website (optional)</span>
+              <span className="text-xs font-medium text-muted">{f.website}</span>
               <input name="url" inputMode="url" placeholder="https://" className="mt-1 h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-agent" />
             </label>
           </div>
           <label className="block">
-            <span className="text-xs font-medium text-muted">What does it do, who is it for, and what does it cost?</span>
+            <span className="text-xs font-medium text-muted">{f.describe}</span>
             <textarea
               name="description"
               required
               rows={5}
-              placeholder="Tickwarden alerts backend engineers when a cron job fails, runs late or never starts. Free for 20 monitors, Team is $29/month. People usually compare us with Cronitor."
+              placeholder={f.describePlaceholder}
               className="mt-1 w-full resize-none rounded-md border border-line-strong px-2.5 py-2 text-sm outline-none focus:border-agent"
             />
           </label>
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => setMode("url")} className="text-sm text-muted hover:text-ink">
-              Use a URL instead
+              {f.useUrl}
             </button>
-            <Submit label="Analyze description" />
+            <Submit label={f.analyzeDescription} pendingLabel={f.starting} />
           </div>
         </div>
       )}
@@ -113,7 +116,7 @@ export function StartForm({
   );
 }
 
-function Submit({ label }: { label: string }) {
+function Submit({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -122,7 +125,7 @@ function Submit({ label }: { label: string }) {
       className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-ink px-4 text-base font-medium text-white transition-colors hover:bg-ink-hover disabled:opacity-70"
     >
       {pending ? <Spinner /> : null}
-      {pending ? "Starting…" : label}
+      {pending ? pendingLabel : label}
       {!pending && <ArrowRight className="size-4" />}
     </button>
   );

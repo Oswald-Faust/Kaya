@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Coins, FlaskConical, Lock, MessageSquareQuote, Radar, Sparkles } from "lucide-react";
 import type { ComponentProps } from "react";
-import { channelLabel } from "@/server/domain/channels";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
 import type { StrategySections } from "./strategy-sections";
 
 type Props = ComponentProps<typeof StrategySections>;
@@ -11,35 +12,37 @@ type Props = ComponentProps<typeof StrategySections>;
  * and the first experiment are real; everything else is withheld server-side
  * (placeholders only, never blurred real data).
  */
-export function StrategyTeaser({ content, channels, experiments, unlockHref }: Pick<Props, "content" | "channels" | "experiments"> & { unlockHref: string }) {
+export async function StrategyTeaser({ content, channels, experiments, unlockHref }: Pick<Props, "content" | "channels" | "experiments"> & { unlockHref: string }) {
   const focus = [...channels].filter((c) => c.verdict !== "avoid").sort((a, b) => b.score - a.score);
   const top = focus[0];
   const first = experiments[0];
+  const { t } = await getI18n();
+  const x = t.app.strategy.teaser;
   const locked = [
-    { icon: Radar, title: "Channel fit for every channel", detail: `${Math.max(channels.length - 1, 0)} more channels scored, with reasons and what to skip` },
-    { icon: Coins, title: "Budget allocation", detail: "Where each dollar goes, with a reserve and hard caps" },
-    { icon: CalendarDays, title: "30, 60 and 90-day plan", detail: "Milestones tied to your goal" },
-    { icon: FlaskConical, title: "Experiment queue", detail: `${Math.max(experiments.length - 1, 0)} more experiments ranked and ready to launch` },
-    { icon: MessageSquareQuote, title: "Messaging and competitor wedges", detail: "Pillars, proof points and how to win the switch" },
+    { icon: Radar, title: x.lockedChannels, detail: fmt(x.lockedChannelsDetail, { count: Math.max(channels.length - 1, 0) }) },
+    { icon: Coins, title: x.lockedBudget, detail: x.lockedBudgetDetail },
+    { icon: CalendarDays, title: x.lockedPlan, detail: x.lockedPlanDetail },
+    { icon: FlaskConical, title: x.lockedQueue, detail: fmt(x.lockedQueueDetail, { count: Math.max(experiments.length - 1, 0) }) },
+    { icon: MessageSquareQuote, title: x.lockedMessaging, detail: x.lockedMessagingDetail },
   ];
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-line bg-surface p-6 md:col-span-3">
-          <p className="font-mono text-[11px] tracking-[0.12em] text-subtle uppercase">Positioning</p>
+          <p className="font-mono text-[11px] tracking-[0.12em] text-subtle uppercase">{x.positioning}</p>
           <p className="mt-2 text-[clamp(20px,2vw,26px)] leading-snug font-medium tracking-[-0.02em] text-ink">{content.positioning.statement}</p>
         </div>
         {top && (
           <div className="rounded-3xl bg-tangerine-soft p-6 md:col-span-1">
-            <p className="font-mono text-[11px] tracking-[0.12em] text-tangerine-deep uppercase">Your best channel</p>
+            <p className="font-mono text-[11px] tracking-[0.12em] text-tangerine-deep uppercase">{x.bestChannel}</p>
             <p className="mt-3 text-5xl font-medium tracking-[-0.05em] tabular">{top.score}</p>
-            <p className="mt-1 text-lg font-medium">{channelLabel(top.channel)}</p>
+            <p className="mt-1 text-lg font-medium">{t.common.channels[top.channel] ?? top.channel}</p>
           </div>
         )}
         {first && (
           <div className="rounded-3xl bg-grass-soft p-6 md:col-span-2">
-            <p className="font-mono text-[11px] tracking-[0.12em] text-grass-deep uppercase">First experiment</p>
+            <p className="font-mono text-[11px] tracking-[0.12em] text-grass-deep uppercase">{x.firstExperiment}</p>
             <p className="mt-3 text-2xl leading-snug font-medium tracking-[-0.02em]">{first.name}</p>
           </div>
         )}
@@ -69,12 +72,12 @@ export function StrategyTeaser({ content, channels, experiments, unlockHref }: P
         <div className="absolute inset-0 grid place-items-center bg-gradient-to-b from-surface/40 via-surface/80 to-surface p-6">
           <div className="max-w-md rounded-3xl bg-ink p-7 text-center text-white shadow-pop">
             <Sparkles className="mx-auto size-6 text-lime" />
-            <p className="mt-3 text-2xl font-medium tracking-[-0.03em]">Unlock your full strategy</p>
-            <p className="mt-2 text-[15px] text-white/70">Start a 14-day free trial to see every channel, the budget split and your experiment queue, and let Kaya start working.</p>
+            <p className="mt-3 text-2xl font-medium tracking-[-0.03em]">{x.unlock}</p>
+            <p className="mt-2 text-[15px] text-white/70">{x.unlockHint}</p>
             <Link href={unlockHref} className="mt-5 inline-flex h-12 items-center gap-2 rounded-xl bg-lime px-5 text-[15px] font-medium text-ink hover:brightness-95">
-              Start free trial <ArrowRight className="size-4" />
+              {x.startTrial} <ArrowRight className="size-4" />
             </Link>
-            <p className="mt-3 text-xs text-white/50">No card required</p>
+            <p className="mt-3 text-xs text-white/50">{x.noCard}</p>
           </div>
         </div>
       </div>

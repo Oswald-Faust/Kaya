@@ -8,6 +8,7 @@ import * as t from "@/server/db/schema";
 import { DomainError } from "@/server/domain/errors";
 import { env } from "@/server/env";
 import { recordAudit } from "@/server/services/audit";
+import { recordSyncMetrics } from "@/server/services/live-metrics";
 import { newId } from "@/lib/ids";
 import { getIntegration } from "./catalog";
 import { signToken, verifyToken } from "./crypto";
@@ -228,6 +229,10 @@ export async function syncConnection(row: IntegrationRow) {
     .update(t.integrations)
     .set({ status: "connected", health: "ok", syncError: null, lastSyncedAt: now, metadata: { ...row.metadata, lastSync: { at: now.toISOString(), summary: result.summary, data: result.data } } })
     .where(eq(t.integrations.id, row.id));
+  // What was synced becomes business metrics, so the Command Center reflects it.
+  await recordSyncMetrics(row.workspaceId, row.provider, result.data, now).catch((error) =>
+    console.error(JSON.stringify({ level: "warn", msg: "sync_metrics_failed", provider: row.provider, error: String(error) })),
+  );
   return result;
 }
 

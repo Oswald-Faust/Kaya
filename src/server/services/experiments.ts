@@ -19,6 +19,7 @@ import { assertTransition, QUEUE_STATUSES } from "@/server/domain/experiments/li
 import { rankExperiments, type RankedExperiment } from "@/server/domain/experiments/ranking";
 import type { ExperimentStatus, PrimaryMetric } from "@/server/domain/types";
 import { experimentKey } from "@/lib/format";
+import { stableId } from "@/lib/ids";
 import { recordAudit } from "./audit";
 import { listLearnings, recordLearning, toSignals, type LearningRow } from "./learnings";
 
@@ -79,6 +80,20 @@ export async function currentChannelScores(workspaceId: string, productId: strin
   if (!version) return {};
   const rows = await db.select().from(channelAssessments).where(eq(channelAssessments.strategyVersionId, version.id));
   return Object.fromEntries(rows.map((r) => [r.channel, r.score]));
+}
+
+/** The full Channel Fit row for one channel, with its rationale and objections. */
+export async function currentChannelFit(workspaceId: string, productId: string, channel: string) {
+  const strategy = await db.query.strategies.findFirst({ where: and(eq(strategies.workspaceId, workspaceId), eq(strategies.productId, productId)) });
+  if (!strategy) return null;
+  const version = await db.query.strategyVersions.findFirst({
+    where: and(eq(strategyVersions.strategyId, strategy.id), eq(strategyVersions.version, strategy.currentVersion)),
+  });
+  if (!version) return null;
+  const row = await db.query.channelAssessments.findFirst({
+    where: and(eq(channelAssessments.strategyVersionId, version.id), eq(channelAssessments.channel, channel)),
+  });
+  return row ? { score: row.score, rationale: row.rationale, reasonsAgainst: row.evidence ?? [] } : null;
 }
 
 export async function monthlyBudgetFor(workspaceId: string, productId: string): Promise<number> {
@@ -183,6 +198,63 @@ export function evaluateRow(exp: ExperimentRow, variants: VariantRow[], now: Dat
 }
 
 /**
+ * Rate experiments need two arms before their measurements can be evaluated.
+ * Experiments created by the strategy planner often start without explicit
+ * variants because the actual task (for example, a comparison page) defines
+ * the treatment later. Create the measurement slots once the experiment is
+ * launched, while keeping all counters at zero until real traffic is recorded.
+ */
+export async function ensureRateExperimentVariants(conn: Db | Tx, experiment: ExperimentRow): Promise<VariantRow[]> {
+  const variants = await conn
+    .select()
+    .from(experimentVariants)
+    .where(and(eq(experimentVariants.workspaceId, experiment.workspaceId), eq(experimentVariants.experimentId, experiment.id)))
+    .orderBy(desc(experimentVariants.isControl), asc(experimentVariants.name));
+
+  if (experiment.primaryMetric === "cac") return variants;
+
+  const control = variants.find((variant) => variant.isControl);
+  const treatment = variants.find((variant) => !variant.isControl);
+  const values = [];
+
+  if (!control) {
+    values.push({
+      id: stableId("var", experiment.id, "control"),
+      workspaceId: experiment.workspaceId,
+      experimentId: experiment.id,
+      name: experiment.type === "seo_page" || experiment.type === "landing_page" ? "Current page" : "Current experience",
+      isControl: true,
+      description: "The existing experience used as the baseline.",
+      exposures: 0,
+      conversions: 0,
+      spend: 0,
+    });
+  }
+
+  if (!treatment) {
+    values.push({
+      id: stableId("var", experiment.id, "treatment"),
+      workspaceId: experiment.workspaceId,
+      experimentId: experiment.id,
+      name: experiment.name,
+      isControl: false,
+      description: "The experience prepared for this experiment.",
+      exposures: 0,
+      conversions: 0,
+      spend: 0,
+    });
+  }
+
+  if (values.length > 0) await conn.insert(experimentVariants).values(values).onConflictDoNothing();
+
+  return conn
+    .select()
+    .from(experimentVariants)
+    .where(and(eq(experimentVariants.workspaceId, experiment.workspaceId), eq(experimentVariants.experimentId, experiment.id)))
+    .orderBy(desc(experimentVariants.isControl), asc(experimentVariants.name));
+}
+
+/**
  * Evaluates a running experiment and, when the evidence supports a decision,
  * completes it and writes the resulting learning back into memory.
  */
@@ -196,8 +268,16 @@ export async function evaluateAndComplete(
   if (exp.status !== "running" && exp.status !== "evaluating") {
     throw new DomainError("invalid_transition", `${experimentKey(exp.number)} is not running.`);
   }
-  const variants = await db.select().from(experimentVariants).where(eq(experimentVariants.experimentId, exp.id)).orderBy(asc(experimentVariants.name));
-  const evaluation = evaluateRow(exp, variants, opts.now);
+  let evaluationExp = exp;
+  const variants = await db.transaction(async (tx) => {
+    const ensured = await ensureRateExperimentVariants(tx, exp);
+    if (exp.status === "running") {
+      await transitionExperiment(tx, workspaceId, exp, "evaluating", actor);
+      evaluationExp = { ...exp, status: "evaluating" };
+    }
+    return ensured;
+  });
+  const evaluation = evaluateRow(evaluationExp, variants, opts.now);
   const decided = evaluation.decision !== "continue";
   if (!decided && !opts.force) return { evaluation, completed: false, learning: null };
 
@@ -206,8 +286,7 @@ export async function evaluateAndComplete(
   const spend = variants.reduce((s, v) => s + v.spend, 0);
 
   const learning = await db.transaction(async (tx) => {
-    if (exp.status === "running") await transitionExperiment(tx, workspaceId, exp, "evaluating", actor);
-    await transitionExperiment(tx, workspaceId, { ...exp, status: "evaluating" }, "completed", actor, {
+    await transitionExperiment(tx, workspaceId, evaluationExp, "completed", actor, {
       outcome,
       observedValue: finalEvaluation.observedValue,
       lift: finalEvaluation.lift,
@@ -245,7 +324,7 @@ export async function evaluateAndComplete(
 export async function simulateToCompletion(workspaceId: string, experimentId: string, actor: Actor, isDemo: boolean) {
   if (!isDemo) throw new DomainError("forbidden", "Simulated results are only available in demo workspaces.");
   const exp = await getExperimentById(workspaceId, experimentId);
-  const variants = await db.select().from(experimentVariants).where(eq(experimentVariants.experimentId, exp.id));
+  const variants = await db.transaction((tx) => ensureRateExperimentVariants(tx, exp));
   const elapsedDays = exp.startedAt ? Math.max(1, (Date.now() - exp.startedAt.getTime()) / 86_400_000) : 1;
   const factor = Math.max(1, exp.durationDays / elapsedDays);
 

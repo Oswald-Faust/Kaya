@@ -5,7 +5,7 @@ import { invokeTool } from "@/server/agent/executor";
 import { RunRecorder } from "@/server/agent/recorder";
 import type { WorkspaceContext } from "@/server/context";
 import { db } from "@/server/db/client";
-import { agentRuns, agentSteps, approvals, experiments, toolCalls } from "@/server/db/schema";
+import { agentRuns, agentSteps, approvals, experiments, products, toolCalls } from "@/server/db/schema";
 import { DomainError } from "@/server/domain/errors";
 import { experimentKey } from "@/lib/format";
 import { recordAudit } from "./audit";
@@ -41,11 +41,16 @@ export async function decideApproval(ctx: WorkspaceContext & { productId: string
     throw new DomainError("forbidden", "Only workspace owners and admins can approve actions.");
   }
 
-  const [claimed] = await db
-    .update(approvals)
-    .set({ status: decision, decidedBy: ctx.userId, decidedAt: new Date(), decisionNote: note ?? null })
-    .where(and(eq(approvals.id, approvalId), eq(approvals.workspaceId, ctx.workspaceId), eq(approvals.status, "pending")))
-    .returning();
+  const claimed = await db.transaction(async (tx) => {
+    // Serialize approval claims with experiment resets before any external action.
+    await tx.select({ id: products.id }).from(products).where(and(eq(products.id, ctx.productId), eq(products.workspaceId, ctx.workspaceId))).for("update");
+    const [row] = await tx.update(approvals)
+      .set({ status: decision, decidedBy: ctx.userId, decidedAt: new Date(), decisionNote: note ?? null })
+      .where(and(eq(approvals.id, approvalId), eq(approvals.workspaceId, ctx.workspaceId), eq(approvals.status, "pending")))
+      .returning();
+    if (row?.runId) await tx.update(agentRuns).set({ status: "running", updatedAt: new Date() }).where(and(eq(agentRuns.id, row.runId), eq(agentRuns.workspaceId, ctx.workspaceId)));
+    return row;
+  });
   if (!claimed) throw new DomainError("conflict", "This approval was already decided or no longer exists.");
 
   await recordAudit(db, {

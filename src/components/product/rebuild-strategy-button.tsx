@@ -5,10 +5,12 @@ import { useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
 import { startStrategyAction } from "@/app/(onboarding)/start/actions";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/client";
 
 /** Starts a new strategy run from current memory, goal and learnings, then shows its live progress. */
 export function RebuildStrategyButton({ slug }: { slug: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,7 @@ export function RebuildStrategyButton({ slug }: { slug: string }) {
           })
         }
       >
-        Rebuild from current memory
+        {t.app.strategy.rebuild}
       </Button>
       {error && (
         <span role="alert" className="text-2xs text-negative">

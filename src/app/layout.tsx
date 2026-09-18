@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist_Mono, Host_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
+import { I18nProvider } from "@/i18n/client";
+import { getI18n } from "@/i18n/server";
 import "./globals.css";
 
 const host = Host_Grotesk({
@@ -16,17 +18,20 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: { default: "Kaya", template: "%s · Kaya" },
-  description: "Kaya is the AI agent that does your marketing. Build your product. Kaya grows it.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: { default: "Kaya", template: "%s · Kaya" }, description: t.meta.description };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { locale, t } = await getI18n();
   return (
-    <html lang="en" className={`${host.variable} ${geistMono.variable} h-full`}>
+    <html lang={locale} className={`${host.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full">
-        <ImpersonationBanner />
-        {children}
+        <I18nProvider locale={locale} dictionary={t}>
+          <ImpersonationBanner />
+          {children}
+        </I18nProvider>
         <Analytics />
       </body>
     </html>

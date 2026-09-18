@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 import { cn } from "@/lib/cn";
 
 export interface ChartPoint {
@@ -48,6 +50,7 @@ export function AreaChart({
   tone?: "ink" | "agent";
 }) {
   const gradientId = useId();
+  const { t } = useI18n();
   const [hover, setHover] = useState<number | null>(null);
   const width = 600;
   const pad = { top: 8, bottom: 20 };
@@ -68,7 +71,7 @@ export function AreaChart({
   }, [data, height, pad.bottom, pad.top]);
 
   if (data.length === 0) {
-    return <div className="grid place-items-center text-xs text-subtle" style={{ height }}>No data for this range</div>;
+    return <div className="grid place-items-center text-xs text-subtle" style={{ height }}>{t.ui.chart.noData}</div>;
   }
 
   const stroke = tone === "agent" ? "var(--color-agent)" : "var(--color-ink)";
@@ -82,7 +85,7 @@ export function AreaChart({
         className="block w-full overflow-visible"
         style={{ height }}
         role="img"
-        aria-label={`Chart from ${formatX(data[0].x)} to ${formatX(data[data.length - 1].x)}, range ${format(min)} to ${format(max)}`}
+        aria-label={fmt(t.ui.chart.label, { from: formatX(data[0].x), to: formatX(data[data.length - 1].x), min: format(min), max: format(max) })}
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();

@@ -28,7 +28,7 @@ beforeAll(async () => {
   await db.insert(t.organizations).values({ id: orgId, name: "Team test", slug: `team-test-${orgId.slice(-6)}`, plan: "launch", planStatus: "trialing", trialEndsAt: new Date(Date.now() + 5 * 86_400_000) });
   await db.insert(t.workspaces).values({ id: wsId, organizationId: orgId, name: "Team test", slug: `team-test-${wsId.slice(-6)}` });
   await db.insert(t.members).values({ id: newId("mem"), organizationId: orgId, userId: user.userId, role: "owner" });
-  owner = { ...user, name: "Owner", isGuest: false, organizationId: orgId, workspaceId: wsId, workspaceSlug: `team-test-${wsId.slice(-6)}`, workspaceName: "Team test", role: "owner", autonomyMode: "copilot", isDemo: false };
+  owner = { ...user, name: "Owner", isGuest: false, organizationId: orgId, workspaceId: wsId, workspaceSlug: `team-test-${wsId.slice(-6)}`, workspaceName: "Team test", workspaceIconUrl: null, role: "owner", autonomyMode: "copilot", isDemo: false };
 });
 
 describe("invitations and seats", () => {

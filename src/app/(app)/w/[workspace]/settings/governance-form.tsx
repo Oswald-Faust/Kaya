@@ -4,15 +4,11 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Spinner } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/i18n/client";
 import type { AutonomyMode } from "@/server/domain/types";
 import { updateGovernanceAction, type GovernanceState } from "./actions";
 
-const MODES: { id: AutonomyMode; label: string; description: string }[] = [
-  { id: "observe", label: "Observe", description: "Reads data and reports. Takes no action, not even drafts." },
-  { id: "suggest", label: "Suggest", description: "Creates plans and drafts. Executes nothing." },
-  { id: "copilot", label: "Copilot", description: "Prepares everything; publishing and spend wait for your approval." },
-  { id: "autopilot", label: "Autopilot", description: "Acts on its own inside the limits below. Sensitive actions still need you." },
-];
+const MODES: AutonomyMode[] = ["observe", "suggest", "copilot", "autopilot"];
 
 export interface GovernanceValues {
   autonomyMode: AutonomyMode;
@@ -27,44 +23,46 @@ export interface GovernanceValues {
 export function GovernanceForm({ slug, values, disabled }: { slug: string; values: GovernanceValues; disabled: boolean }) {
   const [state, action] = useActionState<GovernanceState, FormData>(updateGovernanceAction.bind(null, slug), { error: null, saved: false });
   const [mode, setMode] = useState(values.autonomyMode);
+  const { t } = useI18n();
+  const a = t.settings.agent;
 
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="autonomyMode" value={mode} />
       <fieldset disabled={disabled}>
-        <legend className="text-sm font-semibold text-ink">Autonomy mode</legend>
+        <legend className="text-sm font-semibold text-ink">{a.autonomy}</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup">
           {MODES.map((m) => (
             <button
-              key={m.id}
+              key={m}
               type="button"
               role="radio"
-              aria-checked={mode === m.id}
-              onClick={() => setMode(m.id)}
-              className={cn("rounded-lg border bg-surface p-3 text-left transition-colors disabled:opacity-60", mode === m.id ? "border-ink shadow-[0_0_0_1px_var(--color-ink)]" : "border-line hover:border-line-strong")}
+              aria-checked={mode === m}
+              onClick={() => setMode(m)}
+              className={cn("rounded-lg border bg-surface p-3 text-left transition-colors disabled:opacity-60", mode === m ? "border-ink shadow-[0_0_0_1px_var(--color-ink)]" : "border-line hover:border-line-strong")}
             >
               <span className="flex items-center gap-2 text-sm font-medium text-ink">
-                <span className={cn("size-2 rounded-full", mode === m.id ? "bg-agent" : "bg-line-strong")} />
-                {m.label}
+                <span className={cn("size-2 rounded-full", mode === m ? "bg-agent" : "bg-line-strong")} />
+                {a.modes[m].label}
               </span>
-              <span className="mt-1 block text-xs text-muted">{m.description}</span>
+              <span className="mt-1 block text-xs text-muted">{a.modes[m].description}</span>
             </button>
           ))}
         </div>
       </fieldset>
 
       <fieldset disabled={disabled}>
-        <legend className="text-sm font-semibold text-ink">Budget guardrails</legend>
-        <p className="mt-0.5 text-xs text-muted">Enforced in application code before every spend action. An approval cannot override a hard cap.</p>
+        <legend className="text-sm font-semibold text-ink">{a.guardrails}</legend>
+        <p className="mt-0.5 text-xs text-muted">{a.guardrailsHint}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Field label="Monthly budget" name="monthlyBudget" defaultValue={values.monthlyBudget} prefix="$" hard />
-          <Field label="Max daily ad spend" name="maxDailySpend" defaultValue={values.maxDailySpend} prefix="$" hard />
-          <Field label="Max budget per experiment" name="maxExperimentBudget" defaultValue={values.maxExperimentBudget} prefix="$" hard />
-          <Field label="Max automatic increase" name="maxAutoIncreasePct" defaultValue={Math.round(values.maxAutoIncreasePct * 100)} suffix="%" />
+          <Field label={a.monthlyBudget} name="monthlyBudget" defaultValue={values.monthlyBudget} prefix="$" hard={a.hardCap} />
+          <Field label={a.maxDailySpend} name="maxDailySpend" defaultValue={values.maxDailySpend} prefix="$" hard={a.hardCap} />
+          <Field label={a.maxExperimentBudget} name="maxExperimentBudget" defaultValue={values.maxExperimentBudget} prefix="$" hard={a.hardCap} />
+          <Field label={a.maxAutoIncrease} name="maxAutoIncreasePct" defaultValue={Math.round(values.maxAutoIncreasePct * 100)} suffix="%" />
         </div>
         <div className="mt-4 space-y-2">
-          <Toggle name="autoPauseLosers" defaultChecked={values.autoPauseLosers} label="Auto-pause losing campaigns" description="Reducing spend on a loser never waits for approval." />
-          <Toggle name="autoLaunchCampaigns" defaultChecked={values.autoLaunchCampaigns} label="Allow Autopilot to launch new paid campaigns" description="Off by default. Scaling existing winners within limits is separate." />
+          <Toggle name="autoPauseLosers" defaultChecked={values.autoPauseLosers} label={a.autoPause} description={a.autoPauseHint} />
+          <Toggle name="autoLaunchCampaigns" defaultChecked={values.autoLaunchCampaigns} label={a.autoLaunch} description={a.autoLaunchHint} />
         </div>
       </fieldset>
 
@@ -76,7 +74,7 @@ export function GovernanceForm({ slug, values, disabled }: { slug: string; value
         )}
         {state.saved && !state.error && (
           <p role="status" className="text-sm text-positive">
-            Saved.
+            {t.common.saved}
           </p>
         )}
         <Save disabled={disabled} />
@@ -85,12 +83,12 @@ export function GovernanceForm({ slug, values, disabled }: { slug: string; value
   );
 }
 
-function Field({ label, name, defaultValue, prefix, suffix, hard }: { label: string; name: string; defaultValue: number; prefix?: string; suffix?: string; hard?: boolean }) {
+function Field({ label, name, defaultValue, prefix, suffix, hard }: { label: string; name: string; defaultValue: number; prefix?: string; suffix?: string; hard?: string }) {
   return (
     <label className="block">
       <span className="flex items-center gap-1.5 text-xs font-medium text-muted">
         {label}
-        {hard && <span className="rounded-sm bg-negative-soft px-1 text-[10px] text-negative">Hard cap</span>}
+        {hard && <span className="rounded-sm bg-negative-soft px-1 text-[10px] text-negative">{hard}</span>}
       </span>
       <span className="mt-1 flex h-9 items-center rounded-md border border-line-strong bg-surface px-2.5 focus-within:border-agent">
         {prefix && <span className="text-sm text-subtle">{prefix}</span>}
@@ -116,10 +114,11 @@ function Toggle({ name, defaultChecked, label, description }: { name: string; de
 
 function Save({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useI18n();
   return (
     <button type="submit" disabled={disabled || pending} className="inline-flex h-8 items-center gap-2 rounded-md bg-ink px-3 text-sm font-medium text-white hover:bg-ink-hover disabled:opacity-60">
       {pending && <Spinner />}
-      Save changes
+      {t.settings.agent.saveChanges}
     </button>
   );
 }

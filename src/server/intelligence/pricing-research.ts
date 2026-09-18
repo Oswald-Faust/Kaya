@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_LOCALE, LOCALE_NAMES, type Locale } from "@/i18n/config";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { Extracted, PricingPlan } from "@/server/domain/types";
@@ -62,7 +63,7 @@ export interface PricingResearch {
   sourceUrl?: string;
 }
 
-export async function researchPricingWithClaude(rootUrl: string, productName: string): Promise<PricingResearch | null> {
+export async function researchPricingWithClaude(rootUrl: string, productName: string, locale: Locale = DEFAULT_LOCALE): Promise<PricingResearch | null> {
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 240_000, maxRetries: 2 });
   const host = new URL(rootUrl).hostname.replace(/^www\./, "");
   const messages: Anthropic.Beta.BetaMessageParam[] = [
@@ -79,7 +80,9 @@ export async function researchPricingWithClaude(rootUrl: string, productName: st
       output_config: { effort: "medium", format: betaZodOutputFormat(Output) },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: SYSTEM,
+      system: locale === "en" ? SYSTEM : `${SYSTEM}
+
+Write the "model" sentence in ${LOCALE_NAMES[locale].english}. Plan names, prices and quoted evidence stay exactly as the page shows them.`,
       tools: [
         { type: "web_search_20250305", name: "web_search", max_uses: 3, allowed_domains: [host] },
         { type: "web_fetch_20250910", name: "web_fetch", max_uses: 4, allowed_domains: [host], max_content_tokens: 30000 },

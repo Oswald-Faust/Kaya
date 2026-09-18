@@ -7,6 +7,9 @@ import * as t from "@/server/db/schema";
 import { channelLabel, isChannel, type Channel } from "@/server/domain/channels";
 import { DomainError, isDomainError } from "@/server/domain/errors";
 import { scoreAllChannels, type AudienceArchetype } from "@/server/domain/strategy/channel-fit";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { dictionaries } from "@/i18n/dictionaries";
+import { fmt as tpl } from "@/i18n/format";
 import { generateStrategy } from "@/server/domain/strategy/generate";
 import { providersFor } from "@/server/integrations/catalog";
 import { arpuFromPlans } from "@/server/intelligence/to-memory";
@@ -19,7 +22,7 @@ import { getActiveGoal, getPrimaryProduct } from "./workspace";
 
 export const STRATEGIST_ID = "agent:strategist";
 
-export async function startStrategyRun(ctx: WorkspaceContext): Promise<string> {
+export async function startStrategyRun(ctx: WorkspaceContext, locale: Locale = DEFAULT_LOCALE): Promise<string> {
   const product = await getPrimaryProduct(ctx.workspaceId);
   if (!product) throw new DomainError("not_found", "This workspace has no product.");
   const goal = await getActiveGoal(ctx.workspaceId, product.id);
@@ -30,7 +33,7 @@ export async function startStrategyRun(ctx: WorkspaceContext): Promise<string> {
     workspaceId: ctx.workspaceId,
     productId: product.id,
     kind: "strategy",
-    goal: `Build a strategy to ${goal.title.toLowerCase()}`,
+    goal: tpl(dictionaries[locale].strategyGen.strategyGoal, { goal: goal.title.toLowerCase() }),
     status: "queued",
     planner: "deterministic",
     promptVersion: "strategy-v1",
@@ -49,7 +52,8 @@ function archetypeFrom(text: string): AudienceArchetype {
 const pause = () => new Promise((r) => setTimeout(r, 200));
 
 /** Strategy Engine run: memory + goal + budget → channel fit → strategy version → experiment queue. */
-export async function runStrategyGeneration(workspaceId: string, runId: string): Promise<void> {
+/** `locale` is the founder's language: the strategy is written for them to read. */
+export async function runStrategyGeneration(workspaceId: string, runId: string, locale: Locale = DEFAULT_LOCALE): Promise<void> {
   const run = await db.query.agentRuns.findFirst({ where: and(eq(t.agentRuns.id, runId), eq(t.agentRuns.workspaceId, workspaceId)) });
   if (!run?.productId) return;
   const productId = run.productId;
@@ -124,6 +128,7 @@ export async function runStrategyGeneration(workspaceId: string, runId: string):
         deadline: goal.deadline,
         monthlyBudget: goal.monthlyBudget,
       },
+      locale,
       hasRevenueData,
       channelFits: fits,
     });
