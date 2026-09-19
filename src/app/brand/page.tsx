@@ -5,6 +5,8 @@ import { KayaMark, KayaWordmark } from "@/components/brand/logo";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { ControlSpot, DecideSpot, ExperimentSpot, LearnSpot, UnderstandSpot } from "@/components/brand/clay";
+import { ClayBulb, ClayCompass, ClayEnvelopes, ClayGears, ClayMagnifier, ClayMegaphone, ClayPadlock, ClayRocket, ClayTarget, ClayTrophy } from "@/components/brand/clay-objects";
+import { InView } from "@/components/marketing/motion";
 import { getI18n } from "@/i18n/server";
 import { getMarketingLinks } from "@/server/marketing";
 import { cn } from "@/lib/cn";
@@ -48,6 +50,19 @@ const SPOTS = [
   ["experiment", "bg-grass-soft", ExperimentSpot],
   ["control", "bg-lilac-soft", ControlSpot],
   ["learn", "bg-sun-soft", LearnSpot],
+] as const;
+
+const OBJECTS = [
+  ["magnifier", "bg-blue-soft", ClayMagnifier],
+  ["target", "bg-tangerine-soft", ClayTarget],
+  ["gears", "bg-lime-soft", ClayGears],
+  ["rocket", "bg-lilac-soft", ClayRocket],
+  ["megaphone", "bg-pink-soft", ClayMegaphone],
+  ["trophy", "bg-sun-soft", ClayTrophy],
+  ["bulb", "bg-cream", ClayBulb],
+  ["padlock", "bg-lilac-soft", ClayPadlock],
+  ["envelopes", "bg-tangerine-soft", ClayEnvelopes],
+  ["compass", "bg-blue-soft", ClayCompass],
 ] as const;
 
 export default async function BrandPage() {
@@ -191,6 +206,15 @@ export default async function BrandPage() {
               </div>
             ))}
           </div>
+          <p className="mt-10 max-w-2xl text-[17px] leading-7 text-muted">{b.clay.objectsBody}</p>
+          <InView className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {OBJECTS.map(([key, tone, Obj]) => (
+              <div key={key} className={cn("rounded-2xl p-4", tone)}>
+                <Obj className="mx-auto w-full max-w-[220px]" />
+                <p className="px-1 pt-1 text-sm font-medium">{b.clay.objects[key]}</p>
+              </div>
+            ))}
+          </InView>
         </Block>
 
         <Block id="interface" kicker="05" title={b.ui.title}>

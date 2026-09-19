@@ -50,6 +50,8 @@ export const brand = {
     title: "Clay illustration",
     body: "Kaya's world is made of clay: soft matte objects lit from the top left, with a light grain and a soft shadow. One idea per scene, drawn from the palette, placed on its own tint. Illustrations explain; they never decorate a number.",
     spots: { understand: "Understand", decide: "Decide", experiment: "Experiment", control: "Control", learn: "Learn" },
+    objectsBody: "Clay objects carry one familiar idea each. Use them to vary a page: never show the same object twice in one view.",
+    objects: { magnifier: "Magnifier", target: "Target", gears: "Gears", rocket: "Rocket", megaphone: "Megaphone", trophy: "Trophy", bulb: "Bulb", padlock: "Padlock", envelopes: "Envelopes", compass: "Compass" },
   },
   ui: {
     title: "Interface",

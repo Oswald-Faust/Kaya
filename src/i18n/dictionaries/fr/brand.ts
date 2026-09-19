@@ -52,6 +52,8 @@ export const brand: typeof en = {
     title: "Illustration en argile",
     body: "L'univers de Kaya est fait d'argile : des objets mats et doux éclairés en haut à gauche, avec un léger grain et une ombre douce. Une idée par scène, tirée de la palette, posée sur sa propre teinte. Les illustrations expliquent ; elles ne décorent jamais un chiffre.",
     spots: { understand: "Comprendre", decide: "Décider", experiment: "Expérimenter", control: "Contrôler", learn: "Apprendre" },
+    objectsBody: "Les objets en pâte à modeler portent chacun une idée familière. Ils servent à varier une page : jamais deux fois le même objet dans une même vue.",
+    objects: { magnifier: "Loupe", target: "Cible", gears: "Engrenages", rocket: "Fusée", megaphone: "Mégaphone", trophy: "Trophée", bulb: "Ampoule", padlock: "Cadenas", envelopes: "Enveloppes", compass: "Boussole" },
   },
   ui: {
     title: "Interface",
