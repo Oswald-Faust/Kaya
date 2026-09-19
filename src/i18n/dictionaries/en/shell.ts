@@ -2,7 +2,8 @@ export const shell = {
   nav: {
     workspace: "Workspace",
     commandCenter: "Command Center",
-    agent: "Agent",
+    kai: "Kai",
+    agent: "AI Agents",
     growthLoop: "Growth loop",
     strategy: "Strategy",
     experiments: "Experiments",
@@ -21,6 +22,8 @@ export const shell = {
     openNavigation: "Open navigation",
     closeNavigation: "Close navigation",
     navigation: "Navigation",
+    collapseSidebar: "Collapse sidebar",
+    expandSidebar: "Expand sidebar",
   },
   palette: {
     label: "Command palette",

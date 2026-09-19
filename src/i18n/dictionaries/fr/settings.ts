@@ -157,6 +157,8 @@ export const settings: typeof en = {
     seats: "Sièges",
     products: "Produits",
     running: "Expériences en cours",
+    agentActions: "Actions des agents",
+    agentSpend: "Dépense des actions d'agent",
     includes: "Le plan {plan} inclut",
   },
   profile: {

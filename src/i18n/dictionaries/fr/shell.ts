@@ -4,7 +4,8 @@ export const shell: typeof en = {
   nav: {
     workspace: "Espace de travail",
     commandCenter: "Centre de pilotage",
-    agent: "Agent",
+    kai: "Kai",
+    agent: "Agents IA",
     growthLoop: "Boucle de croissance",
     strategy: "Stratégie",
     experiments: "Expériences",
@@ -23,6 +24,8 @@ export const shell: typeof en = {
     openNavigation: "Ouvrir la navigation",
     closeNavigation: "Fermer la navigation",
     navigation: "Navigation",
+    collapseSidebar: "Réduire la barre latérale",
+    expandSidebar: "Déplier la barre latérale",
   },
   palette: {
     label: "Palette de commandes",

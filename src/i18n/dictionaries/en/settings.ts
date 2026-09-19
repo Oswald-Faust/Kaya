@@ -155,6 +155,8 @@ export const settings = {
     seats: "Seats",
     products: "Products",
     running: "Experiments running",
+    agentActions: "Agent actions",
+    agentSpend: "Agent action spend",
     includes: "{plan} includes",
   },
   profile: {
