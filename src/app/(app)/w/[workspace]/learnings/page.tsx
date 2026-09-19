@@ -54,6 +54,7 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
   return (
     <div className="mx-auto max-w-[1100px] space-y-6 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="learn-header"
         title={lt.title}
         description={fmt(lt.description, { name: product.name })}
       />
@@ -67,7 +68,7 @@ export default async function LearningsPage({ params }: PageProps<"/w/[workspace
           const items = learnings.filter((l) => l.kind === group.kind);
           if (items.length === 0) return null;
           return (
-            <section key={group.kind} aria-labelledby={`group-${group.kind}`}>
+            <section key={group.kind} data-tour="learn-group" aria-labelledby={`group-${group.kind}`}>
               <h2 id={`group-${group.kind}`} className="mb-2 text-sm font-semibold text-ink">
                 {lt.groups[group.kind]} <span className="font-normal text-subtle tabular">{items.length}</span>
               </h2>

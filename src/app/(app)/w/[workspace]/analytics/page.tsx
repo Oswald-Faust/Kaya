@@ -73,12 +73,13 @@ export default async function AnalyticsPage({ params }: PageProps<"/w/[workspace
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="an-header"
         title={at.title}
         description={fmt(at.description, { date: formatDate(asOf, { month: "long", day: "numeric" }, locale) })}
         meta={ctx.isDemo ? <DemoBadge /> : undefined}
       />
 
-      <MetricGroup>
+      <MetricGroup tour="an-kpis">
         <Metric label="MRR" value={usd(k.mrr.value)} delta={pctChange(k.mrr.value, p.mrr.value)} formula={k.mrr.formula} />
         <Metric label={at.arpu} value={usd(k.arpu.value, { cents: true })} delta={pctChange(k.arpu.value, p.arpu.value)} formula={k.arpu.formula} />
         <Metric label={t.app.command.blendedCac} value={usd(k.blendedCac.value)} delta={pctChange(k.blendedCac.value, p.blendedCac.value)} invert formula={k.blendedCac.formula} />
@@ -87,7 +88,7 @@ export default async function AnalyticsPage({ params }: PageProps<"/w/[workspace
         <Metric label={at.churn} value={formatPct(k.revenueChurnRate.value)} delta={pctChange(k.revenueChurnRate.value, p.revenueChurnRate.value)} invert formula={k.revenueChurnRate.formula} />
       </MetricGroup>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div data-tour="an-charts" className="grid gap-5 lg:grid-cols-2">
         <Panel className="p-4">
           <ChartContainer title={at.mrrChart} value={usd(k.mrr.value)}>
             <AreaChart data={blended.map((r) => ({ x: r.day, y: r.mrr }))} height={170} />
@@ -100,7 +101,7 @@ export default async function AnalyticsPage({ params }: PageProps<"/w/[workspace
         </Panel>
       </div>
 
-      <Panel>
+      <Panel tour="an-funnel">
         <PanelHeader title={at.funnel} description={at.funnelHint} />
         <ol className="grid border-t border-line sm:grid-cols-5">
           {funnel.map((step, i) => {
@@ -121,7 +122,7 @@ export default async function AnalyticsPage({ params }: PageProps<"/w/[workspace
         </ol>
       </Panel>
 
-      <Panel className="overflow-hidden">
+      <Panel tour="an-economics" className="overflow-hidden">
         <PanelHeader title={at.economics} description={at.economicsHint} />
         <div className="overflow-x-auto border-t border-line">
           <table className="w-full min-w-[820px] text-sm">

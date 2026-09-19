@@ -51,6 +51,7 @@ export default async function MemoryPage({ params }: PageProps<"/w/[workspace]/m
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="mem-header"
         title={mt.title}
         description={mt.description}
         meta={
@@ -66,7 +67,7 @@ export default async function MemoryPage({ params }: PageProps<"/w/[workspace]/m
         </Notice>
       )}
 
-      <Panel className="overflow-hidden">
+      <Panel tour="mem-facts" className="overflow-hidden">
         <PanelHeader title={mt.facts} />
         <div className="overflow-x-auto border-t border-line">
           <table className="w-full min-w-[860px] text-sm">
@@ -111,7 +112,7 @@ export default async function MemoryPage({ params }: PageProps<"/w/[workspace]/m
       </Panel>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Panel>
+        <Panel tour="mem-icps">
           <PanelHeader title={mt.icps} count={icps.length} />
           <ul className="divide-y divide-line border-t border-line">
             {icps.map((i) => {
@@ -146,7 +147,7 @@ export default async function MemoryPage({ params }: PageProps<"/w/[workspace]/m
         </Panel>
 
         <div className="space-y-5">
-          <Panel>
+          <Panel tour="mem-competitors">
             <PanelHeader title={mt.competitors} count={competitors.length} />
             <ul className="divide-y divide-line border-t border-line">
               {competitors.map((c) => (

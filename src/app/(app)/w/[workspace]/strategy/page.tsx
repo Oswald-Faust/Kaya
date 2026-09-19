@@ -49,6 +49,7 @@ export default async function StrategyPage({ params }: PageProps<"/w/[workspace]
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="strategy-header"
         title={fmt(st.title, { version: strategy.current.version })}
         description={strategy.current.summary}
         meta={
@@ -61,14 +62,16 @@ export default async function StrategyPage({ params }: PageProps<"/w/[workspace]
       />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div data-tour="strategy-body" className="min-w-0">
         {fullAccess ? (
           <StrategySections slug={ctx.workspaceSlug} content={strategy.current.content} channels={strategy.channels} experiments={strategy.experiments} />
         ) : (
           <StrategyTeaser content={strategy.current.content} channels={strategy.channels} experiments={strategy.experiments} unlockHref={`/start/${ctx.workspaceSlug}/plan`} />
         )}
+        </div>
 
         <aside className="space-y-5 xl:sticky xl:top-20 xl:self-start">
-          <Panel>
+          <Panel tour="strategy-history">
             <PanelHeader title={st.history} description={st.historyHint} />
             <ol className="border-t border-line">
               {strategy.versions.map((v) => (
