@@ -14,7 +14,13 @@ import { newId } from "@/lib/ids";
  */
 export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to") ?? "";
-  const path = /^\/[a-z0-9/_-]*$/i.test(to) && !to.startsWith("//") ? to : "";
+  // A path inside the workspace, optionally with a query (Kai links carry `?q=`).
+  const cut = to.indexOf("?");
+  const pathname = cut === -1 ? to : to.slice(0, cut);
+  const query = cut === -1 ? "" : to.slice(cut + 1);
+  const safePath = /^\/[a-z0-9/_-]*$/i.test(pathname) && !pathname.startsWith("//") ? pathname : "";
+  const search = safePath && query ? `?${new URLSearchParams(query).toString()}` : "";
+  const path = `${safePath}${search}`;
   if (env.ALLOW_DEMO_LOGIN === "false") return NextResponse.redirect(new URL("/signup", request.url));
 
   try {
