@@ -13,7 +13,15 @@ export interface SwitcherWorkspace {
   iconUrl?: string | null;
 }
 
-export function WorkspaceSwitcher({ current, workspaces }: { current: SwitcherWorkspace; workspaces: SwitcherWorkspace[] }) {
+export function WorkspaceSwitcher({
+  current,
+  workspaces,
+  collapsed = false,
+}: {
+  current: SwitcherWorkspace;
+  workspaces: SwitcherWorkspace[];
+  collapsed?: boolean;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,17 +47,31 @@ export function WorkspaceSwitcher({ current, workspaces }: { current: SwitcherWo
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-9 w-full items-center gap-2 rounded-md px-1.5 text-left hover:bg-sunken"
+        title={collapsed ? current.name : undefined}
+        className={cn(
+          "flex h-9 w-full items-center rounded-md hover:bg-sunken",
+          collapsed ? "justify-center px-0" : "gap-2 px-1.5 text-left",
+        )}
       >
         <Monogram name={current.name} src={current.iconUrl} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink">{current.name}</span>
-          {current.isDemo && <span className="block text-2xs text-subtle">{t.shell.switcher.demoWorkspace}</span>}
-        </span>
-        <ChevronDown className="size-3.5 text-subtle" />
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-ink">{current.name}</span>
+              {current.isDemo && <span className="block text-2xs text-subtle">{t.shell.switcher.demoWorkspace}</span>}
+            </span>
+            <ChevronDown className="size-3.5 text-subtle" />
+          </>
+        )}
       </button>
       {open && (
-        <div role="menu" className="absolute top-10 left-0 z-50 w-60 rounded-lg bg-surface p-1 shadow-pop">
+        <div
+          role="menu"
+          className={cn(
+            "absolute z-50 w-60 rounded-lg bg-surface p-1 shadow-pop",
+            collapsed ? "left-full top-0 ml-2" : "top-10 left-0",
+          )}
+        >
           <p className="px-2 pt-1.5 pb-1 text-2xs font-medium text-subtle">{t.shell.switcher.workspaces}</p>
           {workspaces.map((w) => (
             <Link

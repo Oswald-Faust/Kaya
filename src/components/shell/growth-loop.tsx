@@ -18,7 +18,12 @@ export async function GrowthLoop({ slug, data }: { slug: string; data: ShellData
     { id: "understand", label: l.understand, value: c.proposedFacts ? fmt(l.toReview, { count: c.proposedFacts }) : plural(locale, c.confirmedFacts, l.facts), href: `${base}/memory` },
     { id: "decide", label: l.decide, value: c.strategyVersion ? fmt(l.strategyVersion, { version: c.strategyVersion }) : l.noStrategy, href: `${base}/strategy` },
     { id: "experiment", label: l.experiment, value: fmt(l.queued, { count: c.queued }), href: `${base}/experiments` },
-    { id: "execute", label: l.execute, value: c.pendingApprovals ? plural(locale, c.pendingApprovals, l.needApproval) : fmt(l.running, { count: c.running }), href: `${base}/agent` },
+    {
+      id: "execute",
+      label: l.execute,
+      value: c.pendingApprovals ? plural(locale, c.pendingApprovals, l.needApproval) : fmt(l.running, { count: c.running }),
+      href: c.pendingApprovals ? `${base}/agent` : `${base}#now-running`,
+    },
     { id: "measure", label: l.measure, value: data.asOf ? l.revenueConnected : l.noData, href: `${base}/analytics` },
     { id: "learn", label: l.learn, value: plural(locale, c.learnings, l.learnings), href: `${base}/learnings` },
   ];
@@ -26,7 +31,9 @@ export async function GrowthLoop({ slug, data }: { slug: string; data: ShellData
   return (
     <ol aria-label={l.label} className="flex min-w-0 items-stretch overflow-x-auto">
       {stages.map((s, i) => {
+        const isExecuting = s.id === "execute" && c.running > 0;
         const attention = data.attention === s.id;
+        const highlighted = attention || isExecuting;
         return (
           <li key={s.id} className="flex min-w-0 items-center">
             <Link
@@ -34,16 +41,17 @@ export async function GrowthLoop({ slug, data }: { slug: string; data: ShellData
               className={cn(
                 "group flex flex-col rounded-md px-2.5 py-1 transition-colors hover:bg-sunken",
                 attention && "bg-agent-soft hover:bg-agent-soft",
+                !attention && isExecuting && "hover:bg-agent-soft/40",
               )}
             >
-              <span className={cn("flex items-center gap-1.5 text-2xs font-medium", attention ? "text-agent" : "text-muted")}>
+              <span className={cn("flex items-center gap-1.5 text-2xs font-medium", highlighted ? "text-agent" : "text-muted")}>
                 <span
                   aria-hidden
-                  className={cn("size-1.5 rounded-full", attention ? "bg-agent animate-pulse-dot" : "bg-line-strong group-hover:bg-muted")}
+                  className={cn("size-1.5 rounded-full", highlighted ? "bg-agent animate-pulse-dot" : "bg-line-strong group-hover:bg-muted")}
                 />
                 {s.label}
               </span>
-              <span className={cn("text-xs whitespace-nowrap tabular", attention ? "font-medium text-agent" : "text-ink")}>{s.value}</span>
+              <span className={cn("text-xs whitespace-nowrap tabular", highlighted ? "font-medium text-agent" : "text-ink")}>{s.value}</span>
             </Link>
             {i < stages.length - 1 && <span aria-hidden className="h-px w-3 shrink-0 bg-line-strong" />}
           </li>
