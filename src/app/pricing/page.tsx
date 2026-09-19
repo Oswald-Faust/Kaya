@@ -9,6 +9,7 @@ import { PricingPlans } from "@/components/pricing/pricing-plans";
 import { PricingCalculator } from "@/components/pricing/pricing-calculator";
 import { PLANS } from "@/components/pricing/plans";
 import { getI18n } from "@/i18n/server";
+import { getMarketingLinks } from "@/server/marketing";
 import { Faq } from "@/components/landing/faq";
 import { cn } from "@/lib/cn";
 
@@ -25,12 +26,12 @@ const HOW = [
 const TRUST = [ShieldCheck, ScrollText, Coins, KeyRound];
 
 export default async function PricingPage() {
-  const { t } = await getI18n();
+  const [{ t }, links] = await Promise.all([getI18n(), getMarketingLinks()]);
   const pg = t.pricing.page;
   const connected = [...CONNECTED];
   return (
     <div className="bg-surface text-ink">
-      <SiteNav />
+      <SiteNav appHref={links.appHref} demoHref={links.demoHref} />
 
       <main className="mx-auto max-w-[1360px] px-5 pt-14 sm:pt-20">
         <section className="grid items-end gap-8 lg:grid-cols-[1fr_minmax(0,520px)]">
@@ -55,7 +56,7 @@ export default async function PricingPage() {
         </section>
 
         <section className="mt-12">
-          <PricingPlans />
+          <PricingPlans initialSubscription={links.subscription} />
         </section>
 
         {/* How pricing works */}

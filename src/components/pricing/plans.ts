@@ -7,6 +7,15 @@
 export type PlanId = "free" | "launch" | "growth" | "scale";
 export type Tier = { actions: number; monthly: number };
 
+export interface UserSubscriptionSummary {
+  plan: PlanId;
+  status: "none" | "trialing" | "active" | "past_due" | "canceled" | "expired";
+  workspaceSlug: string;
+  workspaceName: string;
+  trialDaysLeft: number | null;
+  billingManaged: boolean;
+}
+
 export type Plan = {
   id: PlanId;
   name: string;

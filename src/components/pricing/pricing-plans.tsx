@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Check, ChevronDown, Rocket, Sprout, TrendingUp } from "lucide-react";
+import { ArrowRight, Building2, Check, ChevronDown, Rocket, Sprout, TrendingUp } from "lucide-react";
 import { EASE } from "@/components/marketing/motion";
-import { PLANS, priceFor, type PlanId } from "./plans";
+import { PLANS, priceFor, type PlanId, type UserSubscriptionSummary } from "./plans";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/format";
 import { formatNumber, formatUsd } from "@/lib/format";
+import { getStoredNavAuth, subscribeToNavAuth } from "@/lib/nav-auth";
 
 const HEAD = {
   blue: "bg-blue-deep",
@@ -19,15 +20,68 @@ const HEAD = {
 } as const;
 
 const ICONS: Record<PlanId, typeof Sprout> = { free: Sprout, launch: Rocket, growth: TrendingUp, scale: Building2 };
+const TIER_ORDER: Record<PlanId, number> = { free: 0, launch: 1, growth: 2, scale: 3 };
 
-export function PricingPlans() {
+export function PricingPlans({ initialSubscription = null }: { initialSubscription?: UserSubscriptionSummary | null }) {
   const { t, locale } = useI18n();
   const c = t.pricing.cards;
   const [annual, setAnnual] = useState(true);
   const [tiers, setTiers] = useState<Record<string, number>>({});
+  const [subscription, setSubscription] = useState<UserSubscriptionSummary | null>(initialSubscription);
+
+  useEffect(() => {
+    if (initialSubscription) {
+      setSubscription(initialSubscription);
+    } else {
+      const cached = getStoredNavAuth();
+      if (cached?.subscription) {
+        setSubscription(cached.subscription);
+      }
+    }
+
+    const unsubscribe = subscribeToNavAuth((state) => {
+      if (state.subscription !== undefined) {
+        setSubscription(state.subscription);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [initialSubscription]);
 
   return (
     <div>
+      {/* Context banner when user is logged in with an active subscription */}
+      {subscription && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-line bg-cream/70 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-7 shrink-0 place-items-center rounded-xl bg-surface text-grass-deep shadow-xs">
+              <Check className="size-4" />
+            </span>
+            <p className="text-sm text-ink">
+              {subscription.status === "trialing" && subscription.trialDaysLeft !== null
+                ? fmt(c.bannerTrialTitle, {
+                    plan: PLANS.find((p) => p.id === subscription.plan)?.name ?? subscription.plan,
+                    workspace: subscription.workspaceName,
+                    days: subscription.trialDaysLeft,
+                  })
+                : fmt(c.bannerTitle, {
+                    plan: PLANS.find((p) => p.id === subscription.plan)?.name ?? subscription.plan,
+                    workspace: subscription.workspaceName,
+                  })}
+            </p>
+          </div>
+          <Link
+            href={`/w/${subscription.workspaceSlug}/settings/billing`}
+            className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-ink underline-offset-4 hover:underline sm:self-center"
+          >
+            <span>{c.bannerManage}</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
       <div className="flex justify-end">
         <div role="radiogroup" aria-label={c.billingPeriod} className="inline-flex rounded-xl bg-sunken p-1 text-sm">
           {[
@@ -58,6 +112,21 @@ export function PricingPlans() {
           const tier = plan.tiers?.[tierIndex];
           const price = tier ? priceFor(tier, annual) : null;
           const copy = t.pricing.plans[plan.id];
+          const isCurrent = subscription?.plan === plan.id;
+          const isUpgrade = subscription && TIER_ORDER[plan.id] > TIER_ORDER[subscription.plan];
+
+          let ctaHref = plan.cta.href;
+          let ctaLabel = copy.cta;
+          if (isCurrent) {
+            ctaHref = `/w/${subscription.workspaceSlug}/settings/billing`;
+            ctaLabel = c.managePlan;
+          } else if (subscription && plan.id !== "scale") {
+            ctaHref = `/w/${subscription.workspaceSlug}/settings/billing`;
+            if (isUpgrade) {
+              ctaLabel = c.upgrade;
+            }
+          }
+
           return (
             <motion.article
               key={plan.id}
@@ -66,10 +135,24 @@ export function PricingPlans() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.6, ease: EASE, delay: i * 0.08 }}
-              className={cn("flex scroll-mt-28 flex-col rounded-[24px] bg-cream p-2", plan.recommended && "ring-2 ring-pink-deep")}
+              className={cn(
+                "flex scroll-mt-28 flex-col rounded-[24px] bg-cream p-2 transition-shadow",
+                isCurrent ? "ring-2 ring-ink shadow-sm" : plan.recommended ? "ring-2 ring-pink-deep" : "",
+              )}
             >
               <div className={cn("relative rounded-[18px] p-5 text-white", HEAD[plan.tone])}>
-                {plan.recommended && <span className="absolute top-4 right-4 rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-pink-deep">{c.recommended}</span>}
+                {isCurrent ? (
+                  <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-xs">
+                    <Check className="size-3 text-grass-deep" />
+                    {subscription.status === "trialing" && subscription.trialDaysLeft !== null
+                      ? fmt(c.trialBadge, { days: subscription.trialDaysLeft })
+                      : c.currentPlanBadge}
+                  </span>
+                ) : plan.recommended ? (
+                  <span className="absolute top-4 right-4 rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-pink-deep">
+                    {c.recommended}
+                  </span>
+                ) : null}
                 <span className="grid size-10 place-items-center rounded-xl bg-white/15">
                   <Icon className="size-5" />
                 </span>
@@ -132,15 +215,21 @@ export function PricingPlans() {
                 </ul>
 
                 <Link
-                  href={plan.cta.href}
+                  href={ctaHref}
                   className={cn(
                     "mt-6 inline-flex h-11 items-center justify-center rounded-xl text-[15px] font-medium transition-colors",
-                    plan.recommended ? "bg-ink text-white hover:bg-ink-hover" : "border border-line-strong bg-surface hover:border-ink",
+                    isCurrent
+                      ? "border border-ink bg-surface text-ink hover:bg-cream"
+                      : isUpgrade || (!subscription && plan.recommended)
+                        ? "bg-ink text-white hover:bg-ink-hover"
+                        : "border border-line-strong bg-surface hover:border-ink",
                   )}
                 >
-                  {copy.cta}
+                  {ctaLabel}
                 </Link>
-                {plan.id === "launch" || plan.id === "growth" ? (
+                {isCurrent ? (
+                  <p className="mt-2 text-center text-xs font-medium text-ink/70">{c.currentPlanBadge}</p>
+                ) : plan.id === "launch" || plan.id === "growth" ? (
                   <p className="mt-2 text-center text-xs text-muted">{c.noCard}</p>
                 ) : (
                   <p className="mt-2 h-4" />
