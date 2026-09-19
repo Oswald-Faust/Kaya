@@ -114,7 +114,7 @@ export function AboutStory() {
               <h3 className="text-2xl font-[560] tracking-tight text-ink mt-1">{st.pillarsTitle}</h3>
             </div>
             <Link
-              href="/#pillar-understand"
+              href="/demo"
               className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-agent hover:underline"
             >
               <span>{st.explore}</span>

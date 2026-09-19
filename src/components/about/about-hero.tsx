@@ -125,7 +125,7 @@ export function AboutHero() {
                 {/* Founder Signature footer */}
                 <div className="mt-7 flex items-end justify-between border-t border-line/70 pt-5">
                   <div>
-                    <p className="font-serif italic text-2xl tracking-wide text-ink select-none font-medium">
+                    <p className="font-serif italic text-2xl tracking-wide text-ink select-none font-medium whitespace-nowrap">
                       {h.signature}
                     </p>
                     <p className="font-mono text-[11px] uppercase tracking-wider text-muted mt-1">
