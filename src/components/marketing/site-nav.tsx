@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import { KayaWordmark } from "@/components/brand/logo";
 import { KaiMark } from "@/components/brand/kai-mark";
-import { ControlSpot, DecideSpot, ExperimentSpot, LearnSpot, UnderstandSpot } from "@/components/brand/clay";
+import { ClayBulb, ClayCompass, ClayPadlock, ClayRocket, ClayTarget } from "@/components/brand/clay-objects";
 import { NAV, TONE_CARD, TONE_TILE, resolveHref, type NavItem, type NavMenu } from "./nav-data";
 import { EASE } from "./motion";
 import { cn } from "@/lib/cn";
@@ -14,7 +14,7 @@ import { useI18n } from "@/i18n/client";
 import { LanguageSwitcher } from "./language-switcher";
 import { clearStoredNavAuth, getStoredNavAuth, setStoredNavAuth, subscribeToNavAuth } from "@/lib/nav-auth";
 
-const SPOTS = { understand: UnderstandSpot, decide: DecideSpot, experiment: ExperimentSpot, control: ControlSpot, learn: LearnSpot };
+const SPOTS = { understand: ClayTarget, decide: ClayCompass, experiment: ClayRocket, control: ClayPadlock, learn: ClayBulb };
 const COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
 
 function SmartLink({ href, className, onClick, children }: { href: string; className?: string; onClick?: () => void; children: ReactNode }) {

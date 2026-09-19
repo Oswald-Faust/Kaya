@@ -23,7 +23,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { ExperimentSpot, LearnSpot } from "@/components/brand/clay";
+import { ClayRocket, ClayTrophy } from "@/components/brand/clay-objects";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/i18n/client";
@@ -180,7 +180,7 @@ function WelcomeCard({ firstName, onStart, onSkip }: { firstName: string; onStar
   return (
     <CenteredDialog label={w.label} onDismiss={onSkip}>
       <div className="relative overflow-hidden bg-cream" data-inview="true">
-        <ExperimentSpot className="mx-auto -mb-6 h-56 w-auto" />
+        <ClayRocket className="mx-auto h-52 w-auto py-3 [&_svg]:h-full [&_svg]:w-auto" />
       </div>
       <div className="px-6 pt-5 pb-6 text-center">
         <p className="text-xs font-medium text-agent">{w.eyebrow}</p>
@@ -209,7 +209,7 @@ function DoneCard({ slug, onBack, onClose }: { slug: string; onBack: () => void;
   return (
     <CenteredDialog label={d.label} onDismiss={onClose}>
       <div className="relative overflow-hidden bg-lime-soft" data-inview="true">
-        <LearnSpot className="mx-auto -mb-6 h-56 w-auto" />
+        <ClayTrophy className="mx-auto h-52 w-auto py-3 [&_svg]:h-full [&_svg]:w-auto" />
       </div>
       <div className="px-6 pt-5 pb-6 text-center">
         <span className="mx-auto grid size-8 place-items-center rounded-full bg-positive text-white">
