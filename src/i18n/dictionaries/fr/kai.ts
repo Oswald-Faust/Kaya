@@ -9,16 +9,18 @@ export const kai: typeof en = {
   discover: "Découvrir Kai",
   startFree: "Commencer gratuitement",
 
-  section: {
-    titleA: "Parlez à votre business.",
-    titleB: "Kai répond, preuves à l'appui.",
-    body: "Posez vos questions sur vos clients, vos tarifs, vos concurrents ou ce que vos dernières expériences ont prouvé. Kai répond à partir de ce que votre workspace sait vraiment, et relie chaque ligne à sa source.",
-    honestSample: "Je n'ai aucune mesure pour mars, je n'inventerai donc pas de cause.",
-    bento: [
-      { id: "sources", title: "Chaque ligne a sa source", body: "Faits, profils clients, concurrents et apprentissages, cités avec leur niveau de confiance." },
-      { id: "honest", title: "Il dit quand il ne sait pas", body: "Aucun chiffre inventé. Si la mémoire ne dit rien, Kai pose une question au lieu de deviner." },
-      { id: "everywhere", title: "À un raccourci de vous", body: "⌘J ouvre Kai sur n'importe quel écran, et confie l'action prioritaire à l'agent." },
-      { id: "history", title: "Des conversations à reprendre", body: "Recherchez, renommez, archivez, ou modifiez une question pour la reposer." },
+  home: {
+    title: "Posez vos questions à votre business",
+    body: "Clients, tarifs, concurrents, ce que vos dernières expériences ont prouvé : Kai répond à partir de votre mémoire produit et montre d'où vient chaque ligne.",
+    cta: "Découvrir Kai",
+    panelTitle: "Demander à Kai",
+    close: "Fermer",
+    items: [
+      { title: "Qui sont nos meilleurs clients ?", hint: "Profils, besoins et déclencheurs d'achat", question: "Qui sont nos meilleurs clients et de quoi ont-ils besoin ?" },
+      { title: "Compare nos tarifs", hint: "Vos plans face à ceux de vos concurrents", question: "Compare nos tarifs avec nos concurrents" },
+      { title: "Qu'ont prouvé nos expériences ?", hint: "Gagnantes, perdantes et pistes ouvertes", question: "Qu'avons-nous appris de nos expériences ?" },
+      { title: "Résume notre stratégie", hint: "Positionnement, canaux et priorités", question: "Résume notre stratégie actuelle" },
+      { title: "Quel ton adopter ?", hint: "Votre voix de marque et ses traits", question: "Décris notre voix de marque" },
     ],
   },
 

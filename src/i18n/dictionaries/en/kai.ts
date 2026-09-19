@@ -20,17 +20,18 @@ export const kai = {
   discover: "Discover Kai",
   startFree: "Start free",
 
-  /* Home page section */
-  section: {
-    titleA: "Talk to your business.",
-    titleB: "Kai answers with receipts.",
-    body: "Ask about your customers, your pricing, your competitors or what your last experiments proved. Kai answers from what your workspace actually knows, and links every line to where it came from.",
-    honestSample: "I have no measurements for March, so I won't invent a cause.",
-    bento: [
-      { id: "sources", title: "Every line has a source", body: "Facts, customer profiles, competitors and learnings, cited with their confidence." },
-      { id: "honest", title: "It says when it doesn't know", body: "No invented metrics. If the memory is silent, Kai asks instead of guessing." },
-      { id: "everywhere", title: "One shortcut away", body: "⌘J opens Kai on any screen, and hands the top action to the agent." },
-      { id: "history", title: "Conversations you can come back to", body: "Search, rename, archive, or edit a question and ask again." },
+  home: {
+    title: "Ask your business anything",
+    body: "Customers, pricing, competitors, what your last experiments proved: Kai answers from your product memory and shows where every line comes from.",
+    cta: "Discover Kai",
+    panelTitle: "Ask Kai",
+    close: "Close",
+    items: [
+      { title: "Who are our best customers?", hint: "Profiles, needs and buying triggers", question: "Who are our best customers and what do they need?" },
+      { title: "Compare our pricing", hint: "Your plans next to your competitors'", question: "Compare our pricing with our competitors" },
+      { title: "What did our experiments prove?", hint: "Winners, losers and what's still open", question: "What have we learned from our experiments?" },
+      { title: "Summarize our strategy", hint: "Positioning, channels and priorities", question: "Summarize our current strategy" },
+      { title: "How should we sound?", hint: "Your brand voice and its traits", question: "Describe our brand voice" },
     ],
   },
 
