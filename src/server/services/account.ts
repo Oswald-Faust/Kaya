@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import * as t from "@/server/db/schema";
@@ -120,4 +120,45 @@ export async function upsertGoogleUser(profile: GoogleProfile, guestId: string |
 export async function isPlatformAdmin(userId: string): Promise<boolean> {
   const row = await db.query.users.findFirst({ where: eq(t.users.id, userId), columns: { isPlatformAdmin: true } });
   return Boolean(row?.isPlatformAdmin);
+}
+
+/**
+ * Finds the default dashboard URL for a user who already has a workspace with a product.
+ * Returns /w/:slug for the most recent non-demo workspace with a product (or demo workspace if none),
+ * or null if the user has no product yet.
+ */
+export async function getDefaultDashboardUrl(userId: string): Promise<string | null> {
+  const rows = await db
+    .select({
+      slug: t.workspaces.slug,
+      isDemo: t.workspaces.isDemo,
+      createdAt: t.workspaces.createdAt,
+    })
+    .from(t.workspaces)
+    .innerJoin(t.members, eq(t.members.organizationId, t.workspaces.organizationId))
+    .innerJoin(t.products, eq(t.products.workspaceId, t.workspaces.id))
+    .where(eq(t.members.userId, userId))
+    .orderBy(desc(t.workspaces.createdAt));
+
+  if (rows.length === 0) return null;
+  const target = rows.find((r) => !r.isDemo) ?? rows[0];
+  return target ? `/w/${target.slug}` : null;
+}
+
+/**
+ * Resolves the destination URL after a user logs in.
+ * If a specific next path is provided (other than /start), it is respected.
+ * Platform admins without a specific destination are directed to /admin.
+ * Users who already have a product in their dashboard are directed to their dashboard (/w/:slug).
+ * Otherwise, falls back to the onboarding start screen (/start).
+ */
+export async function resolvePostLoginRedirect(userId: string, requestedNext?: string | null): Promise<string> {
+  if (requestedNext && requestedNext !== "/start") {
+    return requestedNext;
+  }
+  if (await isPlatformAdmin(userId)) {
+    return "/admin";
+  }
+  const dashboardUrl = await getDefaultDashboardUrl(userId);
+  return dashboardUrl ?? "/start";
 }
