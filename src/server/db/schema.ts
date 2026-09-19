@@ -103,6 +103,8 @@ export const users = pgTable("users", {
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   /** Set when the user finishes or skips the first-login product tour. */
   tourCompletedAt: timestamp("tour_completed_at", { withTimezone: true }),
+  /** Pages whose first-visit tour the user has finished or skipped. */
+  pageToursSeen: jsonb("page_tours_seen").$type<string[]>().notNull().default([]),
   /** "en" | "fr". Null follows the browser until the user picks a language. */
   locale: text("locale"),
   createdAt: createdAt(),
@@ -453,6 +455,7 @@ export const experiments = pgTable(
     similarityKey: text("similarity_key").notNull(),
     suppressedReason: text("suppressed_reason"),
     rationale: text("rationale").notNull(),
+    publishedUrl: text("published_url"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -633,6 +636,60 @@ export const agentMessages = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("messages_run_idx").on(t.runId, t.createdAt)],
+);
+
+/* ───────────────────────────── Kai (Conversational RAG) ───────────────────────────── */
+
+export interface KaiSource {
+  type: "fact" | "icp" | "persona" | "competitor" | "learning" | "strategy" | "metric" | "brand";
+  label: string;
+  detail?: string;
+  confidence?: number;
+}
+
+export interface KaiSuggestedAction {
+  label: string;
+  type: "experiment" | "goal";
+  experimentId?: string;
+  experimentNumber?: number;
+  goal?: string;
+}
+
+export const kaiConversations = pgTable(
+  "kai_conversations",
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("Discussion"),
+    status: text("status").notNull().default("active"), // active | archived
+    model: text("model").notNull().default("kai"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("kai_conv_ws_idx").on(t.workspaceId, t.updatedAt),
+    index("kai_conv_ws_status_idx").on(t.workspaceId, t.status, t.updatedAt),
+  ],
+);
+
+export const kaiMessages = pgTable(
+  "kai_messages",
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => kaiConversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // user | assistant
+    content: text("content").notNull(),
+    sources: jsonb("sources").$type<KaiSource[]>().notNull().default([]),
+    suggestedAction: jsonb("suggested_action").$type<KaiSuggestedAction | null>(),
+    model: text("model"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("kai_msg_conv_idx").on(t.conversationId, t.createdAt)],
 );
 
 export const agentSteps = pgTable(
