@@ -99,7 +99,10 @@ describe("returning to the initial experiments", () => {
     await expect(decideApproval({ ...ctx, productId }, approvalId, "approved")).rejects.toThrow();
     const restored = (await experiments()).find((e) => e.status === "proposed")!;
     const newRun = await startExperimentRun({ workspaceId: ctx.workspaceId, productId, userId: ctx.userId, isDemo: false, experimentId: restored.id });
-    expect((await db.query.agentRuns.findFirst({ where: eq(t.agentRuns.id, newRun) }))?.status).toBe("completed");
+    // A Hacker News launch is the founder's to do: the run hands it off through an approval.
+    expect((await db.query.agentRuns.findFirst({ where: eq(t.agentRuns.id, newRun) }))?.status).toBe("awaiting_approval");
+    const handOff = await db.query.approvals.findFirst({ where: eq(t.approvals.runId, newRun) });
+    expect(handOff?.tool).toBe("experiments.founder_launch");
     const draft = await db.query.creativeAssets.findFirst({ where: eq(t.creativeAssets.experimentId, restored.id) });
     expect(draft).toBeTruthy();
     expect(draft!.id).not.toBe(assetId);
