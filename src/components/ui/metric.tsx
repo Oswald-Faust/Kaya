@@ -39,9 +39,10 @@ export function Metric({ label, value, delta, invert, hint, formula, footer, cla
 }
 
 /** A single row of metrics separated by hairlines, like a ledger strip. */
-export function MetricGroup({ children, className }: { children: ReactNode; className?: string }) {
+export function MetricGroup({ children, className, tour }: { children: ReactNode; className?: string; tour?: string }) {
   return (
     <div
+      data-tour={tour}
       className={cn(
         "grid grid-cols-2 divide-line rounded-lg border border-line bg-surface sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none lg:divide-x [&>*]:border-line max-lg:[&>*]:border-b",
         className,

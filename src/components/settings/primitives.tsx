@@ -15,9 +15,9 @@ export function SettingsHeader({ title, description, actions }: { title: string;
   );
 }
 
-export function SettingsSection({ title, description, actions, children, className }: { title?: string; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
+export function SettingsSection({ title, description, actions, children, className, tour }: { title?: string; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; tour?: string }) {
   return (
-    <section className={cn("mt-8 first:mt-0", className)}>
+    <section data-tour={tour} className={cn("mt-8 first:mt-0", className)}>
       {(title || actions) && (
         <div className="mb-2.5 flex items-end justify-between gap-3">
           <div>
@@ -76,8 +76,8 @@ export const inputClass =
   "h-9 w-full rounded-md border border-line-strong bg-surface px-2.5 text-sm text-ink outline-none placeholder:text-subtle focus:border-agent disabled:bg-raised disabled:text-subtle";
 
 export function Meter({ value, max, className }: { value: number; max: number | null; className?: string }) {
-  const pct = max === null ? 8 : max === 0 ? 100 : Math.min(100, (value / max) * 100);
-  const full = max !== null && value >= max;
+  const pct = max === null ? 8 : max === 0 ? (value > 0 ? 100 : 0) : Math.min(100, Math.max(0, (value / max) * 100));
+  const full = max !== null && max > 0 && value >= max;
   return (
     <div className={cn("h-1.5 overflow-hidden rounded-full bg-sunken", className)}>
       <div className={cn("h-full rounded-full transition-[width]", full ? "bg-tangerine" : "bg-ink")} style={{ width: `${pct}%` }} />

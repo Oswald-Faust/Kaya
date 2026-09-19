@@ -41,7 +41,7 @@ export function SettingsNav({ slug, workspaceName }: { slug: string; workspaceNa
   ];
 
   return (
-    <nav aria-label={t.settings.title} className="shrink-0 lg:sticky lg:top-[88px] lg:w-52 lg:self-start">
+    <nav data-tour="set-nav" aria-label={t.settings.title} className="shrink-0 lg:sticky lg:top-[88px] lg:w-52 lg:self-start">
       <p className="hidden px-2.5 pb-3 text-lg font-semibold tracking-tight text-ink lg:block">{t.settings.title}</p>
       <div className="-mx-3 flex gap-1 overflow-x-auto px-3 pb-1 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         {groups.map((group) => (

@@ -2,8 +2,12 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /** The base container. Hairline border, no shadow; hierarchy comes from type and spacing. */
-export function Panel({ children, className, as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" }) {
-  return <As className={cn("rounded-lg border border-line bg-surface", className)}>{children}</As>;
+export function Panel({ children, className, as: As = "section", id, tour }: { children: ReactNode; className?: string; as?: "section" | "div" | "article"; id?: string; /** Anchor for the page tour. */ tour?: string }) {
+  return (
+    <As id={id} data-tour={tour} className={cn("rounded-lg border border-line bg-surface", className)}>
+      {children}
+    </As>
+  );
 }
 
 export function PanelHeader({
