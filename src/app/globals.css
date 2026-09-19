@@ -481,6 +481,52 @@
   background-size: 18px 18px;
 }
 
+/* Clay objects */
+.m-spin {
+  animation: m-spin 14s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.m-spin-rev {
+  animation: m-spin 9s linear infinite reverse;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes m-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.m-flicker {
+  animation: m-flicker 0.9s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+}
+@keyframes m-flicker {
+  from {
+    transform: scaleY(0.82);
+  }
+  to {
+    transform: scaleY(1.08);
+  }
+}
+.m-needle {
+  animation: m-needle 5s ease-in-out infinite;
+  transform-origin: 120px 100px;
+}
+@keyframes m-needle {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  40% {
+    transform: rotate(24deg);
+  }
+  70% {
+    transform: rotate(8deg);
+  }
+}
+
 /* Kai: the pills in its bubble breathe while an answer is being written. */
 .kai-pill {
   animation: kai-pill 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
