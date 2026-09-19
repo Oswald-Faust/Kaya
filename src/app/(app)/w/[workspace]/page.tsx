@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { ArrowUpRight, PlugZap } from "lucide-react";
 import { ApprovalCard } from "@/components/product/approval-card";
-import { EffortDots, EvaluationSignal, ScoreBar } from "@/components/product/experiment-bits";
-import { metricLabel, thresholdLabel } from "@/components/product/experiment-format";
+import { EffortDots, ScoreBar } from "@/components/product/experiment-bits";
+import { RunningTasksHub } from "@/components/product/running-tasks-hub";
 import { RunActionButton } from "@/components/product/run-action-button";
-import { RecordResultButton } from "@/components/product/run-result-button";
 import { Badge, ChannelBadge, ConfidenceBadge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { AreaChart, Sparkline } from "@/components/ui/chart";
@@ -52,7 +51,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div data-tour="cc-header" className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{c.title}</h1>
           <p className="mt-1 text-sm text-muted">
@@ -65,7 +64,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
       </div>
 
       {data.asOf ? (
-        <MetricGroup>
+        <MetricGroup tour="cc-metrics">
           <Metric label={c.mrr} value={usd(strip.mrr.value)} delta={strip.mrr.delta} formula={strip.mrr.formula} footer={<Sparkline values={data.sparks.mrr} className="mt-1.5" />} />
           <Metric label={c.netNewMrr} value={usd(strip.netNewMrr.value)} delta={strip.netNewMrr.delta} formula={strip.netNewMrr.formula} hint={c.newMinusChurned} />
           <Metric label={c.signups} value={formatNumber(strip.signups.value, locale)} delta={strip.signups.delta} formula={strip.signups.formula} footer={<Sparkline values={data.sparks.signups} className="mt-1.5" />} />
@@ -79,10 +78,34 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
         </Notice>
       )}
 
+      {data.running.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-agent-line/70 bg-agent-soft/40 px-3.5 py-2 text-xs transition-colors hover:bg-agent-soft/60">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="relative flex size-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-agent opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-agent" />
+            </span>
+            <span className="font-mono text-2xs font-semibold uppercase tracking-wider text-agent">{c.liveTicker}</span>
+            <span className="text-line-strong" aria-hidden>|</span>
+            <span className="truncate font-medium text-ink">
+              <span className="font-mono text-muted mr-1.5">{data.running[0].key}</span>
+              {data.running[0].experiment.name}
+            </span>
+            <span className="hidden text-muted sm:inline" aria-hidden>·</span>
+            <span className="hidden text-muted tabular md:inline">
+              {fmt(t.app.common.days, { count: data.running[0].daysLeft })} {c.timeLeft.toLowerCase()} · {Math.round((data.running[0].sampleProgress ?? 0) * 100)}% {c.sampleProgress.toLowerCase()}
+            </span>
+          </div>
+          <a href="#now-running" className="inline-flex shrink-0 items-center gap-1 font-medium text-agent hover:underline text-xs">
+            {c.jumpToRunning} <ArrowUpRight className="size-3" />
+          </a>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
         <div className="min-w-0 space-y-5">
           {brief && (
-            <Panel className="overflow-hidden">
+            <Panel tour="cc-brief" className="overflow-hidden">
               <div className="border-l-2 border-agent px-4 pt-3.5 pb-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="flex items-center gap-2 text-xs font-medium text-agent">
@@ -125,7 +148,9 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
             </Panel>
           )}
 
-          <Panel>
+          <RunningTasksHub slug={slug} running={data.running} activeRuns={data.activeRuns} isDemo={ctx.isDemo} locale={locale} t={t} />
+
+          <Panel tour="cc-actions">
             <PanelHeader
               title={c.nextActions}
               description={canRun ? c.runHint : c.nextActionsHint}
@@ -181,65 +206,6 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
             )}
           </Panel>
 
-          <Panel>
-            <PanelHeader title={c.running} count={data.running.length} />
-            {data.running.length === 0 ? (
-              <EmptyState title={c.noneRunning} description={c.noneRunningHint} />
-            ) : (
-              <div className="overflow-x-auto border-t border-line">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead>
-                    <tr className="text-left text-2xs text-subtle">
-                      <th className="px-4 py-2 font-medium">{t.app.common.experiment}</th>
-                      <th className="px-3 py-2 font-medium">{c.metricThreshold}</th>
-                      <th className="px-3 py-2 font-medium">{c.currentResult}</th>
-                      <th className="px-3 py-2 font-medium">{t.app.common.confidence}</th>
-                      <th className="px-3 py-2 font-medium">{t.app.common.spend}</th>
-                      <th className="px-3 py-2 font-medium">{c.timeLeft}</th>
-                      <th className="px-4 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {data.running.map((r) => (
-                      <tr key={r.experiment.id} className="align-top">
-                        <td className="px-4 py-3">
-                          <Link href={`${base}/experiments/${r.experiment.number}`} className="font-medium text-ink hover:underline">
-                            {r.experiment.name}
-                          </Link>
-                          <div className="mt-1 flex items-center gap-3 text-2xs text-muted">
-                            <span className="tabular">{r.key}</span>
-                            <ChannelBadge channel={r.experiment.channel} />
-                          </div>
-                          <p className="mt-1 max-w-sm text-2xs text-muted">{r.evaluation.summary}</p>
-                        </td>
-                        <td className="px-3 py-3 text-xs text-muted">
-                          {metricLabel(r.experiment.primaryMetric, t)} · {thresholdLabel(r.experiment.primaryMetric, r.experiment.successThreshold, t, locale)}
-                        </td>
-                        <td className="px-3 py-3">
-                          <EvaluationSignal evaluation={r.evaluation} metric={r.experiment.primaryMetric} />
-                        </td>
-                        <td className="px-3 py-3">
-                          <ConfidenceBadge value={r.evaluation.confidence} />
-                        </td>
-                        <td className="px-3 py-3 text-xs tabular">
-                          {r.experiment.budget > 0 ? `${usd(r.experiment.spend)} / ${usd(r.experiment.budget)}` : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-xs tabular">{fmt(t.app.common.days, { count: r.daysLeft })}</td>
-                        <td className="px-4 py-3 text-right">
-                          {ctx.isDemo ? (
-                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="simulate" label={c.simulate} />
-                          ) : (
-                            <RecordResultButton slug={slug} experimentId={r.experiment.id} mode="evaluate" label={c.evaluate} />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Panel>
-
           {data.mrrSeries.length > 0 && (
             <Panel className="px-4 py-4">
               <PanelHeader className="px-0 pt-0" title={c.mrrChart} description={c.mrrChartHint} />
@@ -249,7 +215,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
         </div>
 
         <aside className="min-w-0 space-y-5">
-          <Panel>
+          <Panel tour="cc-decisions">
             <div id="approvals" className="scroll-mt-20">
               <PanelHeader title={c.decisions} count={data.approvals.length} description={c.decisionsHint} />
             </div>
@@ -264,6 +230,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
                     compact
                     approval={{
                       id: a.id,
+                      tool: a.tool,
                       title: a.title,
                       change: a.change,
                       reason: a.reason,
@@ -278,7 +245,7 @@ export default async function CommandCenterPage({ params }: PageProps<"/w/[works
             </div>
           </Panel>
 
-          <Panel>
+          <Panel tour="cc-learned">
             <PanelHeader title={c.learned} actions={<ButtonLink href={`${base}/learnings`} size="sm" variant="ghost">{t.app.common.all}</ButtonLink>} />
             {data.learnings.length === 0 && (
               <p className="border-t border-line px-4 py-4 text-sm text-muted">
