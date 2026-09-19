@@ -1,8 +1,8 @@
 import "server-only";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { WorkspaceContext } from "@/server/context";
 import { db } from "@/server/db/client";
-import { experimentVariants, experiments, integrations } from "@/server/db/schema";
+import { agentRuns, experimentVariants, experiments, integrations } from "@/server/db/schema";
 import { buildGrowthBrief } from "@/server/domain/brief/growth-brief";
 import { computeKpis, pctChange, splitWindows, type DailyMetricsRow } from "@/server/domain/analytics/metrics";
 import { getIntegration } from "@/server/integrations/catalog";
@@ -20,7 +20,7 @@ export async function getCommandCenter(ctx: WorkspaceContext) {
   const W = ctx.workspaceId;
   const asOf = shell.asOf;
 
-  const [blended, channelRows, running, ranked, pendingApprovals, learningRows, integrationRows] = await Promise.all([
+  const [blended, channelRows, running, ranked, pendingApprovals, learningRows, integrationRows, activeRuns] = await Promise.all([
     asOf ? getBlendedRows(W, product.id, shiftDay(asOf, -89), asOf) : Promise.resolve([] as DailyMetricsRow[]),
     asOf ? getChannelRows(W, product.id, shiftDay(asOf, -13), asOf) : Promise.resolve([]),
     db
@@ -32,6 +32,19 @@ export async function getCommandCenter(ctx: WorkspaceContext) {
     listApprovals(W, "pending"),
     listLearnings(W, product.id),
     db.select().from(integrations).where(eq(integrations.workspaceId, W)),
+    db
+      .select({
+        id: agentRuns.id,
+        kind: agentRuns.kind,
+        goal: agentRuns.goal,
+        status: agentRuns.status,
+        startedAt: agentRuns.startedAt,
+        createdAt: agentRuns.createdAt,
+      })
+      .from(agentRuns)
+      .where(and(eq(agentRuns.workspaceId, W), eq(agentRuns.status, "running")))
+      .orderBy(desc(agentRuns.createdAt))
+      .limit(3),
   ]);
 
   /* Outcome strip: last 30 days vs the 30 before. */
@@ -72,7 +85,22 @@ export async function getCommandCenter(ctx: WorkspaceContext) {
     const variants = variantRows.filter((v) => v.experimentId === exp.id);
     const evaluation = evaluateRow(exp, variants);
     const elapsed = exp.startedAt ? Math.floor((Date.now() - exp.startedAt.getTime()) / 86_400_000) : 0;
-    return { experiment: exp, key: experimentKey(exp.number), evaluation, daysLeft: Math.max(0, exp.durationDays - elapsed), elapsed };
+    const totalExposures = variants.reduce((s, v) => s + (v.exposures ?? 0), 0);
+    const targetExposures = exp.primaryMetric === "cac" ? Math.max(1, exp.budget) : Math.max(600, exp.durationDays * 100);
+    const currentProgressValue = exp.primaryMetric === "cac" ? exp.spend : totalExposures;
+    const sampleProgress = Math.min(1, currentProgressValue / targetExposures);
+
+    return {
+      experiment: exp,
+      key: experimentKey(exp.number),
+      evaluation,
+      daysLeft: Math.max(0, exp.durationDays - elapsed),
+      elapsed,
+      totalExposures,
+      targetExposures,
+      sampleProgress,
+      variants,
+    };
   });
 
   const open = ranked.filter((r) => !r.suppressedBy);
@@ -125,6 +153,7 @@ export async function getCommandCenter(ctx: WorkspaceContext) {
     mrrSeries: blended.map((r) => ({ x: r.day, y: r.mrr })),
     markers,
     running: runningView,
+    activeRuns,
     nextActions: open.slice(0, 4),
     suppressed: suppressed.slice(0, 2),
     approvals: pendingApprovals,
