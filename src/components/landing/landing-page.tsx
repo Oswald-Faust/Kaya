@@ -9,6 +9,8 @@ import { UseCaseTabs } from "@/components/landing/use-case-tabs";
 import { AutonomyDial } from "@/components/landing/autonomy-dial";
 import { LogoMarquee } from "@/components/landing/logo-marquee";
 import { Faq } from "@/components/landing/faq";
+import { KaiSection } from "@/components/landing/kai-section";
+import { KaiMark } from "@/components/brand/kai-mark";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { ClosingCta } from "@/components/marketing/closing-cta";
@@ -35,8 +37,9 @@ export async function LandingPage({ hero, links, overlapStack = false }: { hero:
 
   return (
     <div className="bg-surface text-ink">
-      <Link href="/pricing" className="relative z-[60] flex h-10 items-center justify-center gap-2 bg-lime px-4 text-sm font-medium text-ink">
+      <Link href="/kai" className="relative z-[60] flex h-10 items-center justify-center gap-2 bg-lime px-4 text-sm font-medium text-ink">
         <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] text-lime">{l.announcementNew}</span>
+        <KaiMark className="size-5" />
         <span className="truncate">{l.announcement}</span>
         <ArrowRight className="size-3.5 shrink-0" />
       </Link>
@@ -118,6 +121,9 @@ export async function LandingPage({ hero, links, overlapStack = false }: { hero:
           </InView>
         </div>
       </section>
+
+      {/* ───────── Kai, the break ───────── */}
+      <KaiSection demoSlug={demoSlug} />
 
       {/* ───────── Pillars ───────── */}
       <div id="platform" className="scroll-mt-24 space-y-4 px-3 pt-4 sm:space-y-5 sm:px-5 sm:pt-5">
