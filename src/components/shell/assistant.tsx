@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowUp, Play, Sparkles, X } from "lucide-react";
-import { askAgentAction, runExperimentAction } from "@/app/(app)/w/[workspace]/actions";
-import { KayaMark } from "@/components/brand/logo";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowUp, Maximize2, Play, X } from "lucide-react";
+import { runExperimentAction } from "@/app/(app)/w/[workspace]/actions";
+import { KaiMark } from "@/components/brand/kai-mark";
 import { Spinner } from "@/components/ui/button";
 import { useI18n } from "@/i18n/client";
 import { fmt, plural } from "@/i18n/format";
@@ -21,8 +23,11 @@ export interface AssistantContext {
  * runs the top action directly; both open the run it just started.
  */
 export function Assistant({ slug, context }: { slug: string; context: AssistantContext }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { t, locale } = useI18n();
   const a = t.app.assistant;
+  const k = t.app.kai;
   const [open, setOpen] = useState(false);
   const [goal, setGoal] = useState("");
   const [pending, start] = useTransition();
@@ -46,17 +51,18 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
   }, [open]);
 
   const ask = (text: string) => {
-    const goalText = text.trim();
-    if (goalText.length < 3 || pending) return;
-    const data = new FormData();
-    data.set("goal", goalText);
-    start(async () => void (await askAgentAction(slug, data)));
+    const question = text.trim();
+    if (question.length < 2) return;
+    setOpen(false);
+    router.push(`/w/${slug}/kai?q=${encodeURIComponent(question)}`);
   };
 
   const runTop = () => {
     if (!context.topAction || pending) return;
     start(async () => void (await runExperimentAction(slug, context.topAction!.id)));
   };
+
+  if (pathname === `/w/${slug}/kai`) return null;
 
   return (
     <>
@@ -68,11 +74,20 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
           className="fixed right-4 bottom-4 z-50 flex max-h-[min(640px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
         >
           <header className="flex items-center gap-2.5 border-b border-line px-4 py-3">
-            <KayaMark className="size-7" />
+            <KaiMark className="size-7" thinking={pending} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-ink">{a.name}</p>
-              <p className="truncate text-xs text-muted">{pending ? a.working : a.role}</p>
+              <p className="truncate text-xs text-muted">{k.role}</p>
             </div>
+            <Link
+              href={`/w/${slug}/kai`}
+              onClick={() => setOpen(false)}
+              title={k.title}
+              aria-label={k.title}
+              className="grid size-7 place-items-center rounded-md text-muted hover:bg-sunken hover:text-ink"
+            >
+              <Maximize2 className="size-3.5" />
+            </Link>
             <button type="button" onClick={() => setOpen(false)} aria-label={a.close} className="grid size-7 place-items-center rounded-md text-muted hover:bg-sunken hover:text-ink">
               <X className="size-4" />
             </button>
@@ -107,7 +122,7 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
 
             <p className="mt-5 text-2xs font-medium text-subtle uppercase">{a.suggestionsTitle}</p>
             <ul className="mt-1.5 space-y-1">
-              {t.app.agent.suggestions.map((s) => (
+              {t.app.kai.suggestions.map((s) => (
                 <li key={s}>
                   <button
                     type="button"
@@ -131,7 +146,7 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
           >
             <div className="flex items-end gap-2 rounded-xl border border-line-strong bg-canvas px-3 py-2 focus-within:border-agent">
               <label htmlFor="kai-goal" className="sr-only">
-                {a.placeholder}
+                {t.app.kai.placeholder}
               </label>
               <textarea
                 id="kai-goal"
@@ -145,7 +160,7 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
                     ask(goal);
                   }
                 }}
-                placeholder={a.placeholder}
+                placeholder={t.app.kai.placeholder}
                 className="max-h-28 min-h-[1.5rem] flex-1 resize-none bg-transparent text-sm text-ink outline-none placeholder:text-subtle"
               />
               <button
@@ -163,6 +178,7 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
 
       <button
         type="button"
+        data-tour="kai-launcher"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={a.open}
@@ -172,7 +188,7 @@ export function Assistant({ slug, context }: { slug: string; context: AssistantC
         )}
       >
         <span className="grid size-7 place-items-center rounded-full bg-white/10">
-          {pending ? <Spinner className="size-3.5" /> : <Sparkles className="size-4" />}
+          <KaiMark className="size-6" thinking={pending} />
         </span>
         {a.open}
         <kbd className="hidden rounded bg-white/10 px-1.5 py-0.5 text-2xs font-normal text-white/70 sm:inline">{a.shortcut}</kbd>
