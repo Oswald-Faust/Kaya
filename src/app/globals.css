@@ -481,6 +481,49 @@
   background-size: 18px 18px;
 }
 
+/* Kai: the pills in its bubble breathe while an answer is being written. */
+.kai-pill {
+  animation: kai-pill 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes kai-pill {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  40% {
+    transform: scaleY(0.45);
+  }
+}
+/* A caret for text being typed out in the Kai demos. */
+.kai-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: kai-caret 1s steps(1) infinite;
+}
+@keyframes kai-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.kai-glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgb(77 120 255 / 0.35), transparent 70%),
+    radial-gradient(40% 40% at 85% 30%, rgb(156 128 255 / 0.22), transparent 70%),
+    radial-gradient(35% 35% at 12% 40%, rgb(255 122 61 / 0.14), transparent 70%);
+}
+.kai-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(70% 60% at 50% 30%, #000 30%, transparent 80%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
