@@ -9,7 +9,8 @@ import { agentRuns, agentSteps, approvals, experiments, products, toolCalls } fr
 import { DomainError } from "@/server/domain/errors";
 import { experimentKey } from "@/lib/format";
 import { recordAudit } from "./audit";
-import { transitionExperiment } from "./experiments";
+import { measurementPlanFor, proofUrlProblem } from "@/server/domain/experiments/measurement";
+import { checkUrlReachability, transitionExperiment } from "./experiments";
 
 export type ApprovalRow = typeof approvals.$inferSelect;
 
@@ -39,6 +40,20 @@ export type ApprovalView = Awaited<ReturnType<typeof listApprovals>>[number];
 export async function decideApproval(ctx: WorkspaceContext & { productId: string }, approvalId: string, decision: "approved" | "rejected", note?: string) {
   if (ctx.role === "viewer" || ctx.role === "member") {
     throw new DomainError("forbidden", "Only workspace owners and admins can approve actions.");
+  }
+
+  // A founder hand-off approved with a post URL: check the URL first, so a wrong link leaves the approval open.
+  const postUrl = note?.trim();
+  if (decision === "approved" && postUrl && /^https?:\/\//.test(postUrl)) {
+    const pendingRow = await db.query.approvals.findFirst({ where: and(eq(approvals.id, approvalId), eq(approvals.workspaceId, ctx.workspaceId)) });
+    if (pendingRow?.tool === "experiments.founder_launch" && pendingRow.experimentId) {
+      const exp = await db.query.experiments.findFirst({ where: and(eq(experiments.id, pendingRow.experimentId), eq(experiments.workspaceId, ctx.workspaceId)) });
+      const product = exp ? await db.query.products.findFirst({ where: eq(products.id, exp.productId) }) : null;
+      const problem = exp ? proofUrlProblem(postUrl, measurementPlanFor(exp), product?.url ?? null) : null;
+      if (problem) throw new DomainError("validation", problem);
+      const reachable = await checkUrlReachability(postUrl);
+      if (!reachable.ok) throw new DomainError("validation", reachable.error ?? "That URL doesn't answer yet.");
+    }
   }
 
   const claimed = await db.transaction(async (tx) => {
@@ -93,9 +108,13 @@ export async function decideApproval(ctx: WorkspaceContext & { productId: string
     throw new DomainError("validation", "This approval is not linked to an executable action.");
   }
 
+  // For a founder hand-off, the approval note is the post URL: Kaya verifies it before measuring.
+  const note_ = note?.trim();
+  const toolInput = claimed.tool === "experiments.founder_launch" && note_ && /^https?:\/\//.test(note_) ? { ...claimed.toolInput, url: note_ } : claimed.toolInput;
+
   const result = await invokeTool(
     claimed.tool,
-    claimed.toolInput,
+    toolInput,
     {
       workspaceId: ctx.workspaceId,
       productId: ctx.productId,
@@ -115,7 +134,17 @@ export async function decideApproval(ctx: WorkspaceContext & { productId: string
         detail: result.isDemo ? "Executed against a demo connection; no external system was changed." : undefined,
         output: { toolCallId: result.toolCallId },
       });
-      await rec.message("agent", `Done: ${claimed.title}${claimed.change ? ` (${claimed.change})` : ""}. I'll watch the results and report back in the Growth Brief.`);
+      if (claimed.tool === "experiments.founder_launch") {
+        const out = result.output as { key?: string; url?: string; verified?: boolean };
+        await rec.message(
+          "agent",
+          out.verified
+            ? `Verified ${out.url}: ${out.key} is live and measurement has started. I'll judge it only once enough data is in.`
+            : `${out.key} is marked as launched. Paste the post URL on the experiment page so I can verify it and start measuring.`,
+        );
+      } else {
+        await rec.message("agent", `Done: ${claimed.title}${claimed.change ? ` (${claimed.change})` : ""}. I'll watch the results and report back in the Growth Brief.`);
+      }
     } else {
       const why = result.status === "blocked" ? result.decision.reasons.join("; ") : result.status === "failed" ? result.error : "unexpected state";
       await rec.step("observation", "Could not execute the approved action", { status: "failed", detail: why });
