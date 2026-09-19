@@ -1,30 +1,30 @@
 "use client";
 
-import { ControlSpot, DecideSpot, ExperimentSpot, UnderstandSpot } from "@/components/brand/clay";
-import { Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
+import { ClayMagnifier, ClayPadlock, ClayRocket, ClayTrophy } from "@/components/brand/clay-objects";
+import { InView, Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
 import { useI18n } from "@/i18n/client";
 
 
 const VALUES = [
   {
-    tone: "bg-grass-soft border-grass/20",
-    textTone: "text-grass-deep",
-    renderSpot: () => <ExperimentSpot className="h-32 w-auto mx-auto" />,
-  },
-  {
-    tone: "bg-lilac-soft border-lilac/20",
-    textTone: "text-lilac-deep",
-    renderSpot: () => <ControlSpot className="h-32 w-auto mx-auto" />,
+    tone: "bg-sun-soft border-sun/20",
+    textTone: "text-sun-deep",
+    renderSpot: () => <ClayTrophy className="mx-auto w-full max-w-[180px]" />,
   },
   {
     tone: "bg-blue-soft border-blue/20",
     textTone: "text-blue-deep",
-    renderSpot: () => <UnderstandSpot className="h-32 w-auto mx-auto" />,
+    renderSpot: () => <ClayMagnifier className="mx-auto w-full max-w-[180px]" />,
   },
   {
     tone: "bg-tangerine-soft border-tangerine/20",
     textTone: "text-tangerine-deep",
-    renderSpot: () => <DecideSpot className="h-32 w-auto mx-auto" />,
+    renderSpot: () => <ClayRocket className="mx-auto w-full max-w-[180px]" />,
+  },
+  {
+    tone: "bg-lilac-soft border-lilac/20",
+    textTone: "text-lilac-deep",
+    renderSpot: () => <ClayPadlock className="mx-auto w-full max-w-[180px]" />,
   },
 ];
 
@@ -49,6 +49,7 @@ export function AboutValues() {
           </Reveal>
         </div>
 
+        <InView>
         <Stagger className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {VALUES.map((val, i) => ({ ...val, ...v.items[i] })).map((val) => (
             <StaggerItem key={val.title}>
@@ -72,6 +73,7 @@ export function AboutValues() {
             </StaggerItem>
           ))}
         </Stagger>
+        </InView>
       </div>
     </section>
   );

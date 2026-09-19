@@ -1,33 +1,33 @@
 "use client";
 
 import { Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
-import { ShieldCheck, Cpu, Coins, Lock, CheckCircle2, Zap } from "lucide-react";
+import { BookOpen, Gauge, Languages, Layers, Lock, ScrollText } from "lucide-react";
 import { useI18n } from "@/i18n/client";
 
 
 const STATS = [
   {
-    icon: Coins,
+    icon: Gauge,
     tone: "bg-grass-soft text-grass-deep border-grass/20",
   },
   {
-    icon: Lock,
+    icon: Layers,
     tone: "bg-lilac-soft text-lilac-deep border-lilac/20",
   },
   {
-    icon: Cpu,
+    icon: Lock,
     tone: "bg-blue-soft text-blue-deep border-blue/20",
   },
   {
-    icon: Zap,
+    icon: ScrollText,
     tone: "bg-tangerine-soft text-tangerine-deep border-tangerine/20",
   },
   {
-    icon: CheckCircle2,
+    icon: BookOpen,
     tone: "bg-sun-soft text-sun-deep border-sun/20",
   },
   {
-    icon: ShieldCheck,
+    icon: Languages,
     tone: "bg-pink-soft text-pink-deep border-pink/20",
   },
 ];
