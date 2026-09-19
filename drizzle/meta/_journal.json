@@ -64,6 +64,34 @@
       "when": 1789601688868,
       "tag": "0008_useful_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789752713859,
+      "tag": "0009_far_praxagora",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789764084710,
+      "tag": "0010_glossy_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789764316915,
+      "tag": "0011_powerful_mister_sinister",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789765096854,
+      "tag": "0012_panoramic_jack_power",
+      "breakpoints": true
     }
   ]
 }
