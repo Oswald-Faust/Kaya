@@ -8,13 +8,15 @@ import { ArrowLeft } from "lucide-react";
 import { ActivityTimeline } from "@/components/product/agent-timeline";
 import { ApprovalCard } from "@/components/product/approval-card";
 import { ExecutionPrompt } from "@/components/product/execution-prompt";
+import { ExperimentStageTabs } from "@/components/product/experiment-stage-tabs";
+import { measurementPlanFor } from "@/server/domain/experiments/measurement";
 import { Badge, ChannelBadge, RiskBadge } from "@/components/ui/badge";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Notice } from "@/components/ui/states";
 import { requireWorkspace } from "@/server/context";
 import { getRun } from "@/server/services/agent-runs";
 import { buildExecutionPrompt } from "@/server/domain/agent/execution-prompt";
-import { formatDate } from "@/lib/format";
+import { experimentKey, formatDate } from "@/lib/format";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -36,7 +38,8 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
   const ctx = await requireWorkspace(workspace);
   const detail = await getRun(ctx.workspaceId, runId);
   if (!detail) notFound();
-  const { run, steps, messages, toolCalls, approvals, assets } = detail;
+  const { run, steps, messages, toolCalls, approvals, assets, experiment } = detail;
+  const proof = experiment ? measurementPlanFor(experiment).proof : null;
   const base = `/w/${ctx.workspaceSlug}`;
   const { t, locale } = await getI18n();
   const r = t.app.run;
@@ -59,7 +62,7 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
-      <div>
+      <div data-tour="run-header">
         <Link href={`${base}/agent`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
           <ArrowLeft className="size-3" /> {r.back}
         </Link>
@@ -76,10 +79,21 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
 
       {run.status === "failed" && run.error && <Notice tone="error" title={r.stopped}>{run.error}</Notice>}
 
+      {experiment && !ctx.isDemo && (
+        <ExperimentStageTabs
+          slug={ctx.workspaceSlug}
+          runId={run.id}
+          experiment={{ id: experiment.id, key: experimentKey(experiment.number), number: experiment.number, status: experiment.status, outcome: experiment.outcome }}
+          canManage={ctx.role === "owner" || ctx.role === "admin"}
+          proofLabel={proof && (proof.kind === "page_url" || proof.kind === "post_url" || proof.kind === "affiliate_link") ? proof.label : null}
+          proofExample={proof?.example ?? null}
+        />
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-5">
           {assets.length > 0 && (
-            <Panel>
+            <Panel tour="run-deliverables">
               <PanelHeader title={r.deliverables} description={r.deliverablesHint} />
               <div className="divide-y divide-line border-t border-line">
                 {assets.map((asset) => (
@@ -103,7 +117,7 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
           )}
 
           {messages.length > 0 && (
-            <Panel>
+            <Panel tour="run-conversation">
               <PanelHeader title={r.conversation} />
               <ul className="space-y-3 border-t border-line px-4 py-4">
                 {messages.map((m) => (
@@ -123,7 +137,7 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
           )}
 
           {run.plan && (
-            <Panel>
+            <Panel tour="run-plan">
               <PanelHeader title={r.plan} description={translateRunText(run.plan.objective, locale)} />
               <ol className="divide-y divide-line border-t border-line">
                 {run.plan.steps.map((s, i) => (
@@ -153,7 +167,7 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
             </Panel>
           )}
 
-          <Panel>
+          <Panel tour="run-timeline">
             <PanelHeader title={r.timeline} description={r.timelineHint} />
             <div className="border-t border-line px-4 py-4">
               <ActivityTimeline
@@ -181,19 +195,19 @@ export default async function RunPage({ params }: PageProps<"/w/[workspace]/agen
 
         <aside className="space-y-5">
           {pending.length > 0 && (
-            <div className="space-y-2.5">
+            <div data-tour="run-decision" className="space-y-2.5">
               <h2 className="px-1 text-sm font-semibold">{r.yourDecision}</h2>
               {pending.map((a) => (
                 <ApprovalCard
                   key={a.id}
                   slug={ctx.workspaceSlug}
-                  approval={{ id: a.id, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: null, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
+                  approval={{ id: a.id, tool: a.tool, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: null, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
                 />
               ))}
             </div>
           )}
 
-          <Panel>
+          <Panel tour="run-outcome">
             <PanelHeader title={r.outcome} />
             <div className="space-y-2 border-t border-line px-4 py-3 text-sm">
               {assets.length > 0 && (

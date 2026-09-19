@@ -40,15 +40,18 @@ export default async function AgentPage({ params, searchParams }: PageProps<"/w/
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="agent-header"
         title={a.title}
         description={a.description}
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-5">
-          <AskAgentForm slug={ctx.workspaceSlug} initial={typeof ask === "string" ? ask : ""} />
+          <div data-tour="agent-ask">
+            <AskAgentForm slug={ctx.workspaceSlug} initial={typeof ask === "string" ? ask : ""} />
+          </div>
 
-          <Panel>
+          <Panel tour="agent-runs">
             <PanelHeader title={a.runs} count={runs.length} description={a.runsHint} />
             {runs.length === 0 ? (
               <EmptyState title={a.noRuns} description={a.noRunsHint} />
@@ -78,7 +81,7 @@ export default async function AgentPage({ params, searchParams }: PageProps<"/w/
           </Panel>
         </div>
 
-        <aside className="space-y-3">
+        <aside data-tour="agent-approvals" className="space-y-3">
           <h2 className="px-1 text-sm font-semibold">
             {a.waiting} <span className="font-normal text-subtle tabular">{approvals.length}</span>
           </h2>
@@ -90,7 +93,7 @@ export default async function AgentPage({ params, searchParams }: PageProps<"/w/
                 key={a.id}
                 slug={ctx.workspaceSlug}
                 compact
-                approval={{ id: a.id, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: a.experimentKey, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
+                approval={{ id: a.id, tool: a.tool, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: a.experimentKey, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
               />
             ))
           )}
