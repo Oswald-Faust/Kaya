@@ -4,7 +4,7 @@ import { exchangeGoogleCode, googleRedirectUri, OAUTH_COOKIE } from "@/server/au
 import { rotateSession } from "@/server/auth/session";
 import { currentUser } from "@/server/context";
 import { googleAuthEnabled } from "@/server/env";
-import { adoptGuest, upsertGoogleUser } from "@/server/services/account";
+import { adoptGuest, resolvePostLoginRedirect, upsertGoogleUser } from "@/server/services/account";
 
 function sameState(a: string, b: string) {
   const x = Buffer.from(a);
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   }
   if (!code || !state || !saved.state || !sameState(state, saved.state)) return fail();
 
+  let authedUserId: string | null = null;
   try {
     const profile = await exchangeGoogleCode(code, googleRedirectUri(request.url));
     const current = await currentUser();
@@ -33,12 +34,14 @@ export async function GET(request: NextRequest) {
     const { userId, adoptedGuest } = await upsertGoogleUser(profile, guestId);
     if (guestId && !adoptedGuest) await adoptGuest(guestId, userId);
     await rotateSession(userId);
+    authedUserId = userId;
   } catch (error) {
     console.error(JSON.stringify({ level: "error", msg: "google_oauth_failed", error: String(error) }));
     return fail();
   }
 
-  const next = saved.next && saved.next.startsWith("/") && !saved.next.startsWith("//") ? saved.next : "/start";
+  const savedNext = saved.next && saved.next.startsWith("/") && !saved.next.startsWith("//") ? saved.next : null;
+  const next = authedUserId ? await resolvePostLoginRedirect(authedUserId, savedNext) : (savedNext ?? "/start");
   const response = NextResponse.redirect(new URL(next, request.url));
   response.cookies.delete({ name: OAUTH_COOKIE, path: "/api/auth/google" });
   return response;

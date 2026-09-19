@@ -6,7 +6,7 @@ import { rotateSession } from "@/server/auth/session";
 import { currentUser } from "@/server/context";
 import { localizeError } from "@/i18n/errors";
 import { getI18n } from "@/i18n/server";
-import { adoptGuest, checkRateLimit, isPlatformAdmin, logInWithPassword, signUpWithPassword } from "@/server/services/account";
+import { adoptGuest, checkRateLimit, isPlatformAdmin, logInWithPassword, resolvePostLoginRedirect, signUpWithPassword } from "@/server/services/account";
 
 export type AuthFormState = { error: string | null };
 
@@ -29,7 +29,7 @@ async function clientKey(prefix: string, email: FormDataEntryValue | null) {
 }
 
 export async function signupAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const next = safeNext(formData.get("next")) ?? "/start";
+  let next = safeNext(formData.get("next"));
   try {
     const current = await currentUser();
     if (!current || current.isGuest) {
@@ -39,6 +39,9 @@ export async function signupAction(_prev: AuthFormState, formData: FormData): Pr
         current?.isGuest ? current.userId : null,
       );
       await rotateSession(userId);
+      next = await resolvePostLoginRedirect(userId, next);
+    } else {
+      next = await resolvePostLoginRedirect(current.userId, next);
     }
   } catch (error) {
     return { error: await toError(error) };
@@ -54,7 +57,7 @@ export async function loginAction(_prev: AuthFormState, formData: FormData): Pro
     const current = await currentUser();
     if (current?.isGuest) await adoptGuest(current.userId, userId);
     await rotateSession(userId);
-    next ??= (await isPlatformAdmin(userId)) ? "/admin" : "/start";
+    next = await resolvePostLoginRedirect(userId, next);
   } catch (error) {
     return { error: await toError(error) };
   }

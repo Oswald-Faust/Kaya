@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { currentUser } from "@/server/context";
+import { resolvePostLoginRedirect } from "@/server/services/account";
 import { googleAuthEnabled } from "@/server/env";
 import { getI18n } from "@/i18n/server";
 
@@ -16,7 +17,9 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   const next = typeof sp.next === "string" && sp.next.startsWith("/") && !sp.next.startsWith("//") ? sp.next : undefined;
   const product = typeof sp.product === "string" ? sp.product.slice(0, 60) : undefined;
   const user = await currentUser();
-  if (user && !user.isGuest) redirect(next ?? "/start");
+  if (user && !user.isGuest) {
+    redirect(await resolvePostLoginRedirect(user.userId, next));
+  }
 
   return (
     <AuthShell variant="signup">
