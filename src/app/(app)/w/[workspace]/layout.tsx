@@ -1,10 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CreditCard, LogOut } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { AppShell } from "@/components/shell/app-shell";
 import { GrowthLoop } from "@/components/shell/growth-loop";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
+import { WorkspaceNavSync } from "@/components/shell/workspace-nav-sync";
 import { ProgressBar } from "@/components/ui/goal-progress";
 import { Badge } from "@/components/ui/badge";
 import { listWorkspacesForUser, requireWorkspace } from "@/server/context";
@@ -29,7 +30,7 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
     getShellData(ctx),
     listWorkspacesForUser(ctx.userId),
     db.select({ number: experiments.number, name: experiments.name }).from(experiments).where(eq(experiments.workspaceId, ctx.workspaceId)).orderBy(desc(experiments.number)),
-    db.query.users.findFirst({ where: eq(users.id, ctx.userId), columns: { tourCompletedAt: true } }),
+    db.query.users.findFirst({ where: eq(users.id, ctx.userId), columns: { tourCompletedAt: true, pageToursSeen: true } }),
   ]);
   const product = await getPrimaryProduct(ctx.workspaceId);
   // Kai needs to know what it would run first, from any screen.
@@ -40,7 +41,7 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
     pendingApprovals: shell.counts.pendingApprovals,
     firstName: ctx.name.split(" ")[0] ?? "",
   };
-  const tour = { autoStart: !ctx.isGuest && !account?.tourCompletedAt, persist: !ctx.isGuest, firstName: ctx.name.split(" ")[0] ?? "" };
+  const tour = { autoStart: !ctx.isGuest && !account?.tourCompletedAt, persist: !ctx.isGuest, firstName: ctx.name.split(" ")[0] ?? "", pagesSeen: account?.pageToursSeen ?? [] };
 
   const goal = shell.goal;
   const topBar = (
@@ -66,46 +67,61 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
           <span className="size-1.5 rounded-full bg-agent" aria-hidden />
           {tb.autonomy[ctx.autonomyMode]}
         </span>
-        <form action="/logout" method="post">
-          <button type="submit" title={fmt(t.common.logOutUser, { email: ctx.email })} className="grid size-7 place-items-center rounded-md border border-line bg-surface text-muted hover:text-ink">
-            <LogOut className="size-3.5" />
-            <span className="sr-only">{t.common.logOut}</span>
-          </button>
-        </form>
       </div>
     </div>
   );
 
   return (
-    <AppShell
-      slug={ctx.workspaceSlug}
-      switcher={<WorkspaceSwitcher current={{ slug: ctx.workspaceSlug, name: ctx.workspaceName, isDemo: ctx.isDemo, iconUrl: ctx.workspaceIconUrl }} workspaces={workspaces} />}
+    <>
+      <WorkspaceNavSync workspaceSlug={ctx.workspaceSlug} />
+      <AppShell
+        slug={ctx.workspaceSlug}
+        userEmail={ctx.email}
+        switcher={<WorkspaceSwitcher current={{ slug: ctx.workspaceSlug, name: ctx.workspaceName, isDemo: ctx.isDemo, iconUrl: ctx.workspaceIconUrl }} workspaces={workspaces} />}
       topBar={topBar}
       billing={
         plan && plan.status === "trialing" && !plan.billingManaged ? (
-          <Link href={`/start/${ctx.workspaceSlug}/plan`} className="flex h-8 w-full items-center gap-1.5 rounded-md bg-sun-soft px-2 text-xs font-medium text-sun-deep hover:bg-sun-soft/80">
-            <CreditCard className="size-3.5" />
-            {fmt(tb.trial, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plural(locale, plan.trialDaysLeft ?? 0, tb.daysLeft) })}
+          <Link
+            href={`/start/${ctx.workspaceSlug}/plan`}
+            title={fmt(tb.trial, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plural(locale, plan.trialDaysLeft ?? 0, tb.daysLeft) })}
+            className="flex h-8 w-full items-center gap-1.5 rounded-md bg-sun-soft px-2 text-xs font-medium text-sun-deep hover:bg-sun-soft/80"
+          >
+            <CreditCard className="size-3.5 shrink-0" />
+            <span className="truncate">{fmt(tb.trial, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plural(locale, plan.trialDaysLeft ?? 0, tb.daysLeft) })}</span>
           </Link>
         ) : plan?.billingManaged ? (
           <form action="/api/billing/portal" method="post">
             <input type="hidden" name="workspace" value={ctx.workspaceSlug} />
             {plan.status === "past_due" ? (
-              <button type="submit" className="flex h-8 w-full items-center gap-1.5 rounded-md bg-negative-soft px-2 text-xs font-medium text-negative">
-                <CreditCard className="size-3.5" />
-                {tb.paymentFailed}
+              <button
+                type="submit"
+                title={tb.paymentFailed}
+                className="flex h-8 w-full items-center gap-1.5 rounded-md bg-negative-soft px-2 text-xs font-medium text-negative"
+              >
+                <CreditCard className="size-3.5 shrink-0" />
+                <span className="truncate">{tb.paymentFailed}</span>
               </button>
             ) : (
-              <button type="submit" title={tb.manageBilling} className="flex h-8 w-full items-center gap-1.5 rounded-md border border-line bg-surface px-2 text-xs font-medium text-ink hover:border-line-strong">
-                <CreditCard className="size-3.5" />
-                {plan.status === "trialing" ? fmt(tb.trialShort, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plan.trialDaysLeft ?? 0 }) : tb.billing}
+              <button
+                type="submit"
+                title={plan.status === "trialing" ? fmt(tb.trialShort, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plan.trialDaysLeft ?? 0 }) : tb.manageBilling}
+                className="flex h-8 w-full items-center gap-1.5 rounded-md border border-line bg-surface px-2 text-xs font-medium text-ink hover:border-line-strong"
+              >
+                <CreditCard className="size-3.5 shrink-0" />
+                <span className="truncate">
+                  {plan.status === "trialing" ? fmt(tb.trialShort, { plan: plan.plan === "growth" ? "Growth" : "Launch", days: plan.trialDaysLeft ?? 0 }) : tb.billing}
+                </span>
               </button>
             )}
           </form>
         ) : plan?.plan === "free" ? (
-          <Link href={`/start/${ctx.workspaceSlug}/plan`} className="flex h-8 w-full items-center gap-1.5 rounded-md bg-lime px-2 text-xs font-medium text-ink hover:bg-lime/80">
-            <CreditCard className="size-3.5" />
-            {tb.freePlan}
+          <Link
+            href={`/start/${ctx.workspaceSlug}/plan`}
+            title={tb.freePlan}
+            className="flex h-8 w-full items-center gap-1.5 rounded-md bg-lime px-2 text-xs font-medium text-ink hover:bg-lime/80"
+          >
+            <CreditCard className="size-3.5 shrink-0" />
+            <span className="truncate">{tb.freePlan}</span>
           </Link>
         ) : null
       }
@@ -117,5 +133,6 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
     >
       {children}
     </AppShell>
+    </>
   );
 }
