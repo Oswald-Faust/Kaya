@@ -46,6 +46,13 @@ export const pricing: typeof en = {
     actionsPerMonth: "{count} actions d'agent/mois",
     customActions: "Actions d'agent sur mesure",
     noCard: "Sans carte pour l'essai",
+    currentPlanBadge: "Forfait actuel",
+    trialBadge: "Essai actif · {days}j restants",
+    managePlan: "Gérer le forfait",
+    upgrade: "Passer à ce forfait",
+    bannerTitle: "Votre espace {workspace} est actuellement sur le forfait {plan}.",
+    bannerTrialTitle: "Votre espace {workspace} est actuellement en essai du forfait {plan} ({days} jours restants).",
+    bannerManage: "Gérer la facturation dans les paramètres",
   },
   page: {
     eyebrow: "Tarifs",

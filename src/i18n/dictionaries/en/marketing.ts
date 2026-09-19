@@ -1,5 +1,6 @@
 export const marketing = {
   chrome: {
+    "new": "New",
     "main": "Main",
     "home": "Kaya home",
     "pricing": "Pricing",
@@ -16,7 +17,11 @@ export const marketing = {
     "builtFor": "Built for founders who build.",
     "ctaTitle": "Turn your product into revenue today",
     "ctaLead": "Start free. No credit card. Nothing spends without you.",
-    "ctaAnalyze": "Analyze my product"
+    "ctaAnalyze": "Analyze my product",
+    "legalNotice": "Legal notice",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "dpa": "DPA"
   },
   nav: {
     items: {
@@ -37,6 +42,10 @@ export const marketing = {
       },
       "goalsPace": {
         "label": "Goals & pace"
+      },
+      "kai": {
+        "label": "Kai",
+        "desc": "Talk to your business, with sources"
       },
       "kayaAgent": {
         "label": "Kaya agent"

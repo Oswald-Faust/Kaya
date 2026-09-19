@@ -2,6 +2,7 @@ import type { marketing as en } from "../en/marketing";
 
 export const marketing: typeof en = {
   chrome: {
+    "new": "Nouveau",
     "main": "Principal",
     "home": "Accueil Kaya",
     "pricing": "Tarifs",
@@ -18,7 +19,11 @@ export const marketing: typeof en = {
     "builtFor": "Conçu pour les fondateurs qui construisent.",
     "ctaTitle": "Transformez votre produit en chiffre d'affaires dès aujourd'hui",
     "ctaLead": "Gratuit pour commencer. Sans carte bancaire. Rien n'est dépensé sans vous.",
-    "ctaAnalyze": "Analyser mon produit"
+    "ctaAnalyze": "Analyser mon produit",
+    "legalNotice": "Mentions Légales",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "dpa": "DPA"
   },
   nav: {
     items: {
@@ -39,6 +44,10 @@ export const marketing: typeof en = {
       },
       "goalsPace": {
         "label": "Objectifs et rythme"
+      },
+      "kai": {
+        "label": "Kai",
+        "desc": "Parlez à votre business, sources à l'appui"
       },
       "kayaAgent": {
         "label": "Agent Kaya"

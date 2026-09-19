@@ -4,7 +4,7 @@ export const landing: typeof en = {
   metaTitle: "Kaya — L'agent IA qui fait votre marketing",
   metaDescription: "Collez votre URL. Kaya lit votre produit, choisit les canaux qui méritent votre argent, mène des expériences et apprend ce qui fait croître le chiffre d'affaires, chaque dollar soumis à votre approbation.",
   announcementNew: "Nouveau",
-  announcement: "Les tarifs Kaya sont en ligne : gratuit pour commencer, vous payez à mesure que l'agent en fait plus",
+  announcement: "Découvrez Kai : parlez à votre business, obtenez des réponses sourcées",
   stackBefore: "Fonctionne avec les outils que les éditeurs de logiciels en croissance utilisent déjà.",
   stackConnected: "Connectés",
   stackMiddle: "aujourd'hui,",

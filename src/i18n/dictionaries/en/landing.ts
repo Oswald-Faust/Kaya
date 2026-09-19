@@ -2,7 +2,7 @@ export const landing = {
   metaTitle: "Kaya — The AI agent that does your marketing",
   metaDescription: "Paste your URL. Kaya reads your product, picks the channels worth your money, runs experiments and learns what grows revenue, with every dollar behind your approval.",
   announcementNew: "New",
-  announcement: "Kaya pricing is live: start free, pay as the agent does more",
+  announcement: "Meet Kai: talk to your business, and get answers with sources",
   stackBefore: "Works with the stack growing software companies already run.",
   stackConnected: "Connected",
   stackMiddle: "today,",

@@ -47,6 +47,13 @@ export const pricing = {
     actionsPerMonth: "{count} agent actions/mo",
     customActions: "Custom agent actions",
     noCard: "No card for the trial",
+    currentPlanBadge: "Current plan",
+    trialBadge: "Trial active · {days}d left",
+    managePlan: "Manage plan",
+    upgrade: "Upgrade",
+    bannerTitle: "Your workspace {workspace} is currently on the {plan} plan.",
+    bannerTrialTitle: "Your workspace {workspace} is currently trialing {plan} ({days} days left).",
+    bannerManage: "Manage billing in settings",
   },
   page: {
     eyebrow: "Pricing",
