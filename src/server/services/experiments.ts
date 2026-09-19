@@ -1,4 +1,5 @@
 import "server-only";
+import { measurementPlanFor, trackedLink } from "@/server/domain/experiments/measurement";
 import { and, asc, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { db, type Db, type Tx } from "@/server/db/client";
 import {
@@ -9,17 +10,23 @@ import {
   experimentVariants,
   experiments,
   goals,
+  integrations,
   learnings,
   strategies,
   strategyVersions,
+  products,
 } from "@/server/db/schema";
 import { DomainError } from "@/server/domain/errors";
 import { evaluateExperiment, type Evaluation } from "@/server/domain/experiments/evaluation";
 import { assertTransition, QUEUE_STATUSES } from "@/server/domain/experiments/lifecycle";
 import { rankExperiments, type RankedExperiment } from "@/server/domain/experiments/ranking";
+import { providersFor } from "@/server/integrations/catalog";
+import { resolveAdapter } from "@/server/integrations/resolver";
 import type { ExperimentStatus, PrimaryMetric } from "@/server/domain/types";
 import { experimentKey } from "@/lib/format";
 import { stableId } from "@/lib/ids";
+import type { Locale } from "@/i18n/config";
+import { translateServerText } from "@/i18n/server-text";
 import { recordAudit } from "./audit";
 import { listLearnings, recordLearning, toSignals, type LearningRow } from "./learnings";
 
@@ -355,3 +362,164 @@ export async function simulateToCompletion(workspaceId: string, experimentId: st
   const end = exp.startedAt ? new Date(exp.startedAt.getTime() + exp.durationDays * 86_400_000 + 1000) : new Date();
   return evaluateAndComplete(workspaceId, experimentId, actor, { force: true, now: end });
 }
+
+export interface ValidateUrlResult {
+  ok: boolean;
+  status?: number;
+  error?: string;
+  url?: string;
+  experiment?: ExperimentRow;
+}
+
+export async function checkUrlReachability(
+  urlStr: string,
+  locale: Locale = "en"
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { ok: false, error: translateServerText("The URL must begin with http:// or https://", locale) };
+    }
+  } catch {
+    return { ok: false, error: translateServerText("Invalid URL format.", locale) };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(parsed.toString(), {
+        method: "HEAD",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "User-Agent": "Kaya-Bot/1.0 (+https://kaya.ai)" },
+      });
+    } catch {
+      // Some servers reject HEAD requests with 405 or 403; fallback to GET
+      res = await fetch(parsed.toString(), {
+        method: "GET",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "User-Agent": "Kaya-Bot/1.0 (+https://kaya.ai)" },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Many sites (Hacker News included) answer HEAD with 405/403/501 but serve the page on GET.
+    if ([403, 405, 501].includes(res.status)) {
+      res = await fetch(parsed.toString(), {
+        method: "GET",
+        redirect: "follow",
+        signal: AbortSignal.timeout(6000),
+        headers: { "User-Agent": "Kaya-Bot/1.0 (+https://kaya.ai)" },
+      });
+    }
+
+    if (res.ok || (res.status >= 200 && res.status < 400)) {
+      return { ok: true, status: res.status };
+    }
+    return {
+      ok: false,
+      status: res.status,
+      error: translateServerText(`The page responded with HTTP status ${res.status}.`, locale),
+    };
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
+    const msg = isTimeout
+      ? translateServerText("Request timed out: the page is taking too long to respond.", locale)
+      : translateServerText("Unable to reach the server. Please check the domain or your network connection.", locale);
+    return { ok: false, error: msg };
+  }
+}
+
+export async function validateAndSetPublishedUrl(
+  workspaceId: string,
+  experimentId: string,
+  urlStr: string,
+  actor: Actor,
+  opts: { launch?: boolean; locale?: Locale } = {}
+): Promise<ValidateUrlResult> {
+  const exp = await getExperimentById(workspaceId, experimentId);
+  const check = await checkUrlReachability(urlStr, opts.locale ?? "en");
+  if (!check.ok) {
+    return { ok: false, status: check.status, error: check.error };
+  }
+
+  const normalizedUrl = new URL(urlStr).toString();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(experiments)
+      .set({ publishedUrl: normalizedUrl, updatedAt: new Date() })
+      .where(and(eq(experiments.id, experimentId), eq(experiments.workspaceId, workspaceId)));
+
+    await tx
+      .update(creativeAssets)
+      .set({ status: "published" })
+      .where(and(eq(creativeAssets.experimentId, experimentId), eq(creativeAssets.workspaceId, workspaceId)));
+
+    await ensureRateExperimentVariants(tx, exp);
+
+    if (opts.launch && (exp.status === "proposed" || exp.status === "awaiting_approval")) {
+      await transitionExperiment(tx, workspaceId, exp, "running", actor, { startedAt: new Date() });
+    }
+
+    await recordAudit(tx, {
+      workspaceId,
+      actorType: actor.type,
+      actorId: actor.id,
+      action: "experiment.url_validated",
+      targetType: "experiment",
+      targetId: exp.id,
+      payload: { url: normalizedUrl, status: check.status, launched: Boolean(opts.launch) },
+    });
+  });
+
+  const updated = await getExperimentById(workspaceId, experimentId);
+  return { ok: true, status: check.status, url: normalizedUrl, experiment: updated };
+}
+
+export interface ExperimentReadiness {
+  requiresUrl: boolean;
+  publishedUrl: string | null;
+  hasAnalytics: boolean;
+  connectedProviders: string[];
+  /** From the experiment's measurement plan: what proves it's live and how it's measured. */
+  proofLabel: string;
+  proofExample: string;
+  evaluation: string;
+  signalDays: number;
+  trackedLink: string | null;
+}
+
+export async function getExperimentReadiness(workspaceId: string, exp: ExperimentRow): Promise<ExperimentReadiness> {
+  const plan = measurementPlanFor(exp);
+  // Pages need their URL; community and social posts need the post's URL (HN item, Reddit thread…).
+  const requiresUrl = plan.proof.kind === "page_url" || plan.proof.kind === "post_url" || plan.proof.kind === "affiliate_link";
+  const product = await db.query.products.findFirst({ where: eq(products.id, exp.productId) });
+
+  const resolved = await resolveAdapter(workspaceId, "READ_ANALYTICS");
+  const connected = await db
+    .select({ provider: integrations.provider })
+    .from(integrations)
+    .where(and(eq(integrations.workspaceId, workspaceId), eq(integrations.status, "connected")));
+
+  const analyticsProviders = providersFor("READ_ANALYTICS").map((p) => p.provider);
+  const connectedAnalytics = connected.map((c) => c.provider).filter((p) => analyticsProviders.includes(p));
+
+  return {
+    requiresUrl,
+    publishedUrl: exp.publishedUrl ?? null,
+    hasAnalytics: Boolean(resolved) || connectedAnalytics.length > 0,
+    connectedProviders: connectedAnalytics,
+    proofLabel: plan.proof.label,
+    proofExample: plan.proof.example,
+    evaluation: plan.evaluation,
+    signalDays: plan.signalDays,
+    trackedLink: product?.url ? trackedLink(product.url, plan, exp.number) : null,
+  };
+}
+
