@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Float, Lightformer, RoundedBox } from "@react-three/drei";
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useRef, useState, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
 
 /**
@@ -85,21 +85,46 @@ function Floater({ children, speed, reduced }: { children: ReactNode; speed: num
   );
 }
 
+function hasWebGL() {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(window.WebGLRenderingContext && (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+  } catch {
+    return false;
+  }
+}
+
+class SceneErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 export function Hero3DScene({ eventSource, active = true }: { eventSource?: RefObject<HTMLElement | null>; active?: boolean }) {
-  const [reduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [supported] = useState(() => hasWebGL());
+  const [reduced] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false));
+
+  if (!supported) return null;
 
   return (
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      frameloop={active ? "always" : "never"}
-      camera={{ position: [0, 2.4, 12.5], fov: 30 }}
-      eventSource={eventSource as RefObject<HTMLElement> | undefined}
-      eventPrefix="client"
-      gl={{ antialias: true, alpha: true }}
-      onCreated={({ camera }) => camera.lookAt(0, 1.2, 0)}
-      className="!absolute inset-0"
-    >
+    <SceneErrorBoundary>
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        frameloop={active ? "always" : "never"}
+        camera={{ position: [0, 2.4, 12.5], fov: 30 }}
+        eventSource={eventSource as RefObject<HTMLElement> | undefined}
+        eventPrefix="client"
+        gl={{ antialias: true, alpha: true }}
+        onCreated={({ camera }) => camera.lookAt(0, 1.2, 0)}
+        className="!absolute inset-0"
+      >
       <ambientLight intensity={0.55} />
       <directionalLight position={[4, 7, 5]} intensity={1.7} castShadow shadow-mapSize={[1024, 1024]} />
       <Environment resolution={256}>
@@ -153,5 +178,6 @@ export function Hero3DScene({ eventSource, active = true }: { eventSource?: RefO
       <ContactShadows position={[0, -0.6, 0]} opacity={0.32} scale={12} blur={2.6} far={4} resolution={512} color="#3b3226" />
       </Offset>
     </Canvas>
+    </SceneErrorBoundary>
   );
 }

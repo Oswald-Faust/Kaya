@@ -14,11 +14,7 @@ import { useI18n } from "@/i18n/client";
 
 const Hero3DScene = dynamic(() => import("./hero-3d-scene").then((m) => m.Hero3DScene), {
   ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 grid place-items-center">
-      <KayaMark className="size-40 animate-pulse opacity-80" />
-    </div>
-  ),
+  loading: () => null,
 });
 
 const intro = (i: number) => ({
