@@ -1,28 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Layers, Sparkles } from "lucide-react";
+import { ArrowRight, Layers } from "lucide-react";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
 import { SOLUTIONS } from "@/data/solutions-data";
+import { getI18n } from "@/i18n/server";
+import { getMarketingLinks } from "@/server/marketing";
 import { cn } from "@/lib/cn";
 import { TONE_TILE } from "@/components/marketing/nav-data";
 
-export const metadata: Metadata = {
-  title: "Solutions · Kaya — Le système de croissance IA pour vos logiciels",
-  description:
-    "Des solutions adaptées aux fondateurs solos, petites équipes, SaaS B2B, DevTools et applications IA, à chaque étape de votre croissance.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getI18n();
+  const isEn = locale === "en";
 
-export default function SolutionsIndexPage() {
+  return {
+    title: isEn
+      ? "Solutions · Kaya — The AI Growth Operating System for Software"
+      : "Solutions · Kaya — Le système de croissance IA pour vos logiciels",
+    description: isEn
+      ? "Tailored growth solutions for solo founders, small teams, B2B SaaS, DevTools, and AI applications at every stage of growth."
+      : "Des solutions adaptées aux fondateurs solos, petites équipes, SaaS B2B, DevTools et applications IA, à chaque étape de votre croissance.",
+  };
+}
+
+export default async function SolutionsIndexPage() {
+  const [{ locale }, links] = await Promise.all([getI18n(), getMarketingLinks()]);
+  const isEn = locale === "en";
+
   const byStage = SOLUTIONS.filter((s) => s.category === "byStage");
   const byProduct = SOLUTIONS.filter((s) => s.category === "byProduct");
   const byTeam = SOLUTIONS.filter((s) => s.category === "byTeam");
 
   return (
     <div className="min-h-screen bg-surface text-ink font-sans antialiased selection:bg-lime-soft selection:text-lime-deep">
-      <SiteNav />
+      <SiteNav appHref={links.appHref} demoHref={links.demoHref} />
 
       <main className="mx-auto max-w-[1360px] px-5 pt-14 sm:pt-20">
         {/* Header */}
@@ -30,13 +43,17 @@ export default function SolutionsIndexPage() {
           <Reveal>
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-cream px-3 py-1 text-xs font-mono tracking-wide text-ink">
               <Layers className="size-3 text-agent" />
-              <span>Solutions Kaya</span>
+              <span>{isEn ? "Kaya Solutions" : "Solutions Kaya"}</span>
             </div>
             <h1 className="mt-4 text-[clamp(44px,6.2vw,84px)] leading-[0.94] font-[560] tracking-[-0.05em] text-ink">
-              Une croissance sur-mesure pour votre profil
+              {isEn
+                ? "Tailored growth for your software profile"
+                : "Une croissance sur-mesure pour votre profil"}
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-muted leading-relaxed">
-              Que vous soyez développeur solo en pré-lancement ou une équipe de 10 personnes passant à l&apos;échelle, Kaya s&apos;adapte à vos contraintes de temps, de budget et d&apos;outils.
+              {isEn
+                ? "Whether you are a solo developer in pre-launch or a 10-person team scaling up, Kaya adapts to your constraints in time, budget, and tools."
+                : "Que vous soyez développeur solo en pré-lancement ou une équipe de 10 personnes passant à l'échelle, Kaya s'adapte à vos contraintes de temps, de budget et d'outils."}
             </p>
           </Reveal>
         </section>
@@ -46,10 +63,16 @@ export default function SolutionsIndexPage() {
           <Reveal>
             <div className="flex items-baseline justify-between border-b border-line pb-4 mb-8">
               <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-muted">Axe 01</span>
-                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">Par étape de maturité</h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-muted">
+                  {isEn ? "Axis 01" : "Axe 01"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">
+                  {isEn ? "By maturity stage" : "Par étape de maturité"}
+                </h2>
               </div>
-              <span className="text-xs text-muted font-mono">{byStage.length} solutions</span>
+              <span className="text-xs text-muted font-mono">
+                {byStage.length} solutions
+              </span>
             </div>
           </Reveal>
 
@@ -68,22 +91,24 @@ export default function SolutionsIndexPage() {
                           <Icon className="size-5" />
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider rounded-md bg-surface px-2 py-0.5 border border-line text-muted">
-                          {sol.badge}
+                          {isEn ? sol.badgeEn : sol.badge}
                         </span>
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-muted">{sol.kicker}</p>
+                      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+                        {isEn ? sol.kickerEn : sol.kicker}
+                      </p>
                       <h3 className="mt-2 text-lg font-medium tracking-tight text-ink group-hover:text-agent transition-colors leading-snug">
-                        {sol.title}
+                        {isEn ? sol.titleEn : sol.title}
                       </h3>
                       <p className="mt-3 text-xs sm:text-sm text-muted leading-relaxed line-clamp-3">
-                        {sol.lead}
+                        {isEn ? sol.leadEn : sol.lead}
                       </p>
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-line/40 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold text-ink">{sol.stat.value}</span>
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-ink group-hover:translate-x-0.5 transition-transform">
-                        Découvrir <ArrowRight className="size-3" />
+                        {isEn ? "Explore" : "Découvrir"} <ArrowRight className="size-3" />
                       </span>
                     </div>
                   </Link>
@@ -98,10 +123,16 @@ export default function SolutionsIndexPage() {
           <Reveal>
             <div className="flex items-baseline justify-between border-b border-line pb-4 mb-8">
               <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-muted">Axe 02</span>
-                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">Par type de produit</h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-muted">
+                  {isEn ? "Axis 02" : "Axe 02"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">
+                  {isEn ? "By product type" : "Par type de produit"}
+                </h2>
               </div>
-              <span className="text-xs text-muted font-mono">{byProduct.length} solutions</span>
+              <span className="text-xs text-muted font-mono">
+                {byProduct.length} solutions
+              </span>
             </div>
           </Reveal>
 
@@ -120,22 +151,24 @@ export default function SolutionsIndexPage() {
                           <Icon className="size-5" />
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider rounded-md bg-surface px-2 py-0.5 border border-line text-muted">
-                          {sol.badge}
+                          {isEn ? sol.badgeEn : sol.badge}
                         </span>
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-muted">{sol.kicker}</p>
+                      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+                        {isEn ? sol.kickerEn : sol.kicker}
+                      </p>
                       <h3 className="mt-2 text-lg font-medium tracking-tight text-ink group-hover:text-agent transition-colors leading-snug">
-                        {sol.title}
+                        {isEn ? sol.titleEn : sol.title}
                       </h3>
                       <p className="mt-3 text-xs sm:text-sm text-muted leading-relaxed line-clamp-3">
-                        {sol.lead}
+                        {isEn ? sol.leadEn : sol.lead}
                       </p>
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-line/40 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold text-ink">{sol.stat.value}</span>
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-ink group-hover:translate-x-0.5 transition-transform">
-                        Découvrir <ArrowRight className="size-3" />
+                        {isEn ? "Explore" : "Découvrir"} <ArrowRight className="size-3" />
                       </span>
                     </div>
                   </Link>
@@ -150,10 +183,16 @@ export default function SolutionsIndexPage() {
           <Reveal>
             <div className="flex items-baseline justify-between border-b border-line pb-4 mb-8">
               <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-muted">Axe 03</span>
-                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">Par équipe & organisation</h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-muted">
+                  {isEn ? "Axis 03" : "Axe 03"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">
+                  {isEn ? "By team & organization" : "Par équipe & organisation"}
+                </h2>
               </div>
-              <span className="text-xs text-muted font-mono">{byTeam.length} solutions</span>
+              <span className="text-xs text-muted font-mono">
+                {byTeam.length} solutions
+              </span>
             </div>
           </Reveal>
 
@@ -172,22 +211,24 @@ export default function SolutionsIndexPage() {
                           <Icon className="size-5" />
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider rounded-md bg-surface px-2 py-0.5 border border-line text-muted">
-                          {sol.badge}
+                          {isEn ? sol.badgeEn : sol.badge}
                         </span>
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-muted">{sol.kicker}</p>
+                      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+                        {isEn ? sol.kickerEn : sol.kicker}
+                      </p>
                       <h3 className="mt-2 text-lg font-medium tracking-tight text-ink group-hover:text-agent transition-colors leading-snug">
-                        {sol.title}
+                        {isEn ? sol.titleEn : sol.title}
                       </h3>
                       <p className="mt-3 text-xs sm:text-sm text-muted leading-relaxed line-clamp-3">
-                        {sol.lead}
+                        {isEn ? sol.leadEn : sol.lead}
                       </p>
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-line/40 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold text-ink">{sol.stat.value}</span>
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-ink group-hover:translate-x-0.5 transition-transform">
-                        Découvrir <ArrowRight className="size-3" />
+                        {isEn ? "Explore" : "Découvrir"} <ArrowRight className="size-3" />
                       </span>
                     </div>
                   </Link>

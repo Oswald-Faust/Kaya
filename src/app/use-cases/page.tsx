@@ -6,22 +6,35 @@ import { SiteFooter } from "@/components/marketing/site-footer";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
 import { USE_CASES } from "@/data/use-cases-data";
+import { getI18n } from "@/i18n/server";
+import { getMarketingLinks } from "@/server/marketing";
 import { cn } from "@/lib/cn";
 import { TONE_TILE } from "@/components/marketing/nav-data";
 
-export const metadata: Metadata = {
-  title: "Cas d'usage · Kaya — Le système de croissance IA pour vos logiciels",
-  description:
-    "Découvrez comment Kaya aide les fondateurs à trouver leurs 100 premiers clients, scaler le search payant, optimiser leur budget et convertir leurs essais en abonnés payants.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getI18n();
+  const isEn = locale === "en";
 
-export default function UseCasesIndexPage() {
+  return {
+    title: isEn
+      ? "Use Cases · Kaya — The AI Growth Operating System for Software"
+      : "Cas d'usage · Kaya — Le système de croissance IA pour vos logiciels",
+    description: isEn
+      ? "Discover how Kaya helps founders find their first 100 customers, scale paid search with hard caps, optimize budget allocation, and turn trials into paying customers."
+      : "Découvrez comment Kaya aide les fondateurs à trouver leurs 100 premiers clients, scaler le search payant, optimiser leur budget et convertir leurs essais en abonnés payants.",
+  };
+}
+
+export default async function UseCasesIndexPage() {
+  const [{ locale }, links] = await Promise.all([getI18n(), getMarketingLinks()]);
+  const isEn = locale === "en";
+
   const getCustomers = USE_CASES.filter((u) => u.category === "getCustomers");
   const growWhatYouHave = USE_CASES.filter((u) => u.category === "growWhatYouHave");
 
   return (
     <div className="min-h-screen bg-surface text-ink font-sans antialiased selection:bg-lime-soft selection:text-lime-deep">
-      <SiteNav />
+      <SiteNav appHref={links.appHref} demoHref={links.demoHref} />
 
       <main className="mx-auto max-w-[1360px] px-5 pt-14 sm:pt-20">
         {/* Header */}
@@ -29,13 +42,17 @@ export default function UseCasesIndexPage() {
           <Reveal>
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-cream px-3 py-1 text-xs font-mono tracking-wide text-ink">
               <Sparkles className="size-3 text-agent" />
-              <span>Cas d&apos;usage Kaya</span>
+              <span>{isEn ? "Kaya Use Cases" : "Cas d'usage Kaya"}</span>
             </div>
             <h1 className="mt-4 text-[clamp(44px,6.2vw,84px)] leading-[0.94] font-[560] tracking-[-0.05em] text-ink">
-              Ce que Kaya fait concrètement pour votre produit
+              {isEn
+                ? "What Kaya actually does for your software"
+                : "Ce que Kaya fait concrètement pour votre produit"}
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-muted leading-relaxed">
-              Pas de théories abstraites. Choisissez votre priorité de croissance actuelle et découvrez le plan d&apos;action précis exécuté par l&apos;agent sous vos garde-fous.
+              {isEn
+                ? "No abstract theories. Pick your current growth bottleneck and discover the precise battle plan executed by the agent within your guardrails."
+                : "Pas de théories abstraites. Choisissez votre priorité de croissance actuelle et découvrez le plan d'action précis exécuté par l'agent sous vos garde-fous."}
             </p>
           </Reveal>
         </section>
@@ -45,10 +62,16 @@ export default function UseCasesIndexPage() {
           <Reveal>
             <div className="flex items-baseline justify-between border-b border-line pb-4 mb-8">
               <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-muted">Axe 01</span>
-                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">Trouver des clients</h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-muted">
+                  {isEn ? "Axis 01" : "Axe 01"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">
+                  {isEn ? "Get customers" : "Trouver des clients"}
+                </h2>
               </div>
-              <span className="text-xs text-muted font-mono">{getCustomers.length} cas d&apos;usage</span>
+              <span className="text-xs text-muted font-mono">
+                {getCustomers.length} {isEn ? "use cases" : "cas d'usage"}
+              </span>
             </div>
           </Reveal>
 
@@ -67,22 +90,24 @@ export default function UseCasesIndexPage() {
                           <Icon className="size-5" />
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider rounded-md bg-surface px-2 py-0.5 border border-line text-muted">
-                          {uc.badge}
+                          {isEn ? uc.badgeEn : uc.badge}
                         </span>
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-muted">{uc.kicker}</p>
+                      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+                        {isEn ? uc.kickerEn : uc.kicker}
+                      </p>
                       <h3 className="mt-2 text-lg font-medium tracking-tight text-ink group-hover:text-agent transition-colors leading-snug">
-                        {uc.title}
+                        {isEn ? uc.titleEn : uc.title}
                       </h3>
                       <p className="mt-3 text-xs sm:text-sm text-muted leading-relaxed line-clamp-3">
-                        {uc.lead}
+                        {isEn ? uc.leadEn : uc.lead}
                       </p>
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-line/40 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold text-ink">{uc.stat.value}</span>
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-ink group-hover:translate-x-0.5 transition-transform">
-                        Explorer <ArrowRight className="size-3" />
+                        {isEn ? "Explore" : "Explorer"} <ArrowRight className="size-3" />
                       </span>
                     </div>
                   </Link>
@@ -97,10 +122,16 @@ export default function UseCasesIndexPage() {
           <Reveal>
             <div className="flex items-baseline justify-between border-b border-line pb-4 mb-8">
               <div>
-                <span className="font-mono text-xs uppercase tracking-wider text-muted">Axe 02</span>
-                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">Faire grandir l&apos;existant</h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-muted">
+                  {isEn ? "Axis 02" : "Axe 02"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mt-1">
+                  {isEn ? "Grow what you have" : "Faire grandir l'existant"}
+                </h2>
               </div>
-              <span className="text-xs text-muted font-mono">{growWhatYouHave.length} cas d&apos;usage</span>
+              <span className="text-xs text-muted font-mono">
+                {growWhatYouHave.length} {isEn ? "use cases" : "cas d'usage"}
+              </span>
             </div>
           </Reveal>
 
@@ -119,22 +150,24 @@ export default function UseCasesIndexPage() {
                           <Icon className="size-5" />
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider rounded-md bg-surface px-2 py-0.5 border border-line text-muted">
-                          {uc.badge}
+                          {isEn ? uc.badgeEn : uc.badge}
                         </span>
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-muted">{uc.kicker}</p>
+                      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+                        {isEn ? uc.kickerEn : uc.kicker}
+                      </p>
                       <h3 className="mt-2 text-lg font-medium tracking-tight text-ink group-hover:text-agent transition-colors leading-snug">
-                        {uc.title}
+                        {isEn ? uc.titleEn : uc.title}
                       </h3>
                       <p className="mt-3 text-xs sm:text-sm text-muted leading-relaxed line-clamp-3">
-                        {uc.lead}
+                        {isEn ? uc.leadEn : uc.lead}
                       </p>
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-line/40 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold text-ink">{uc.stat.value}</span>
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-ink group-hover:translate-x-0.5 transition-transform">
-                        Explorer <ArrowRight className="size-3" />
+                        {isEn ? "Explore" : "Explorer"} <ArrowRight className="size-3" />
                       </span>
                     </div>
                   </Link>

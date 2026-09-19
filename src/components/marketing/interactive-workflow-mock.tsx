@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, ShieldCheck, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/cn";
 import { TONE_CARD, TONE_TILE, type Tone } from "./nav-data";
 
@@ -22,6 +23,8 @@ export function InteractiveWorkflowMock({
   items,
   actionLabel,
 }: InteractiveWorkflowMockProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [executed, setExecuted] = useState(false);
   const [activeItem, setActiveItem] = useState<number | null>(null);
 
@@ -42,7 +45,7 @@ export function InteractiveWorkflowMock({
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-0.5 text-[11px] font-mono font-medium text-ink">
             <span className="size-1.5 rounded-full bg-ink animate-pulse" />
-            {executed ? "Exécuté avec succès" : status}
+            {executed ? (isEn ? "Executed successfully" : "Exécuté avec succès") : status}
           </span>
         </div>
       </div>
@@ -58,7 +61,9 @@ export function InteractiveWorkflowMock({
               <h3 className="text-xl font-medium tracking-tight text-ink">{title}</h3>
             </div>
             <p className="mt-1 font-mono text-xs text-muted">
-              Gouvernance appliquée · Éléments déterministes vérifiés
+              {isEn
+                ? "Governance enforced · Deterministic rules verified"
+                : "Gouvernance appliquée · Éléments déterministes vérifiés"}
             </p>
           </div>
           <button
@@ -74,7 +79,7 @@ export function InteractiveWorkflowMock({
             {executed ? (
               <>
                 <Check className="size-3.5" />
-                Action validée et archivée
+                {isEn ? "Action approved & logged" : "Action validée et archivée"}
               </>
             ) : (
               <>
@@ -116,9 +121,15 @@ export function InteractiveWorkflowMock({
         <div className="mt-6 flex items-center justify-between rounded-xl bg-sunken/60 px-4 py-2.5 text-xs text-muted border border-line/50">
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5 text-subtle" />
-            <span>Aucune action externe n&apos;est mutée sans passage des tests de politique financière.</span>
+            <span>
+              {isEn
+                ? "No external action mutated without financial policy clearance."
+                : "Aucune action externe n'est mutée sans passage des tests de politique financière."}
+            </span>
           </div>
-          <span className="hidden font-mono text-[10px] text-subtle sm:inline">SHA-256 Vérifié</span>
+          <span className="hidden font-mono text-[10px] text-subtle sm:inline">
+            {isEn ? "SHA-256 Verified" : "SHA-256 Vérifié"}
+          </span>
         </div>
       </div>
     </div>
