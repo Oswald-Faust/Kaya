@@ -1,100 +1,34 @@
 "use client";
 
-import { Reveal, Stagger, StaggerItem } from "@/components/marketing/motion";
-import { ArrowUpRight, MapPin, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { ClayEnvelopes } from "@/components/brand/clay-objects";
+import { InView, Reveal } from "@/components/marketing/motion";
 import { useI18n } from "@/i18n/client";
 
-
-const ROLES = [
-  {
-    tags: ["TypeScript", "Next.js", "PostgreSQL", "Drizzle"],
-  },
-  {
-    tags: ["LLM Grounding", "Causal Inference", "Python/TypeScript", "Stats"],
-  },
-  {
-    tags: ["Figma", "Design Systems", "Motion", "Tailwind"],
-  },
-];
-
+/** No open roles yet: the ask is for design partners, straight to the founders. */
 export function AboutCareers() {
   const c = useI18n().t.about.careers;
   return (
-    <section id="careers" className="py-20 sm:py-28 bg-surface border-t border-line">
-      <div className="mx-auto max-w-[1360px] px-5 sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <Reveal>
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-cream px-3 py-1 text-xs font-medium text-ink mb-3">
-              <Sparkles className="size-3 text-agent" />
-              <span>{c.badge}</span>
-            </div>
-            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.05] font-[560] tracking-[-0.04em] text-ink">
-              {c.title}
-            </h2>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <p className="mt-4 text-lg text-muted">
-              {c.lead}
-            </p>
-          </Reveal>
-        </div>
-
-        {/* Roles List */}
-        <Stagger className="mt-14 space-y-4 max-w-4xl mx-auto">
-          {ROLES.map((base, i) => ({ ...base, ...c.roles[i] })).map((role) => (
-            <StaggerItem key={role.title}>
-              <a
-                href={`mailto:careers@kaya.so?subject=${encodeURIComponent(c.mailSubject + role.title)}`}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-6 rounded-2xl border border-line bg-surface p-6 sm:p-7 transition-all hover:border-agent hover:bg-cream/40 hover:shadow-sm"
-              >
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-lg font-[560] text-ink group-hover:text-agent transition-colors">
-                      {role.title}
-                    </h3>
-                    <span className="rounded-md bg-stone px-2.5 py-0.5 font-mono text-[10px] text-ink font-medium">
-                      {role.team}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-muted max-w-xl leading-relaxed">
-                    {role.desc}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {role.tags.map((tag) => (
-                      <span key={tag} className="text-[11px] font-mono text-subtle bg-cream px-2 py-0.5 rounded border border-line/60">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex sm:flex-col sm:items-end justify-between items-center shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-line/60">
-                  <div className="flex items-center gap-1.5 text-xs text-muted">
-                    <MapPin className="size-3 text-subtle" />
-                    <span>{role.location}</span>
-                  </div>
-                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-agent group-hover:underline">
-                    <span>{c.apply}</span>
-                    <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </span>
-                </div>
-              </a>
-            </StaggerItem>
-          ))}
-        </Stagger>
-
-        {/* Open application note */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-muted">
-            {c.openNote}{" "}
-            <a
-              href="mailto:founders@kaya.so"
-              className="font-medium text-ink underline underline-offset-4 hover:text-agent"
-            >
+    <section id="careers" className="px-3 pt-4 sm:px-5 sm:pt-5">
+      <div className="mx-auto grid max-w-[1360px] items-center gap-6 overflow-hidden rounded-[32px] bg-lime-soft px-6 py-12 sm:px-12 lg:grid-cols-[1.2fr_1fr]">
+        <Reveal>
+          <span className="inline-flex rounded-full bg-lime px-3 py-1 font-mono text-[11px] tracking-[0.12em] uppercase">{c.badge}</span>
+          <h2 className="mt-6 text-[clamp(34px,4.2vw,56px)] leading-[1.02] font-medium tracking-[-0.045em]">{c.title}</h2>
+          <p className="mt-4 max-w-xl text-lg text-ink/75">{c.lead}</p>
+          <p className="mt-2 max-w-xl text-[15px] text-muted">{c.openNote}</p>
+          <div className="mt-8 flex flex-wrap gap-2">
+            <a href={`mailto:founders@kaya.so?subject=${encodeURIComponent(c.mailSubject.trim())}`} className="inline-flex h-11 items-center gap-2 rounded-xl bg-ink px-5 text-[15px] font-medium text-white transition-colors hover:bg-ink-hover">
               {c.emailFounders}
             </a>
-          </p>
-        </div>
+            <Link href="/start" className="inline-flex h-11 items-center gap-2 rounded-xl border border-ink/15 bg-surface px-5 text-[15px] font-medium transition-colors hover:border-ink">
+              {c.apply} <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </Reveal>
+        <InView className="flex justify-center">
+          <ClayEnvelopes className="w-full max-w-[380px]" />
+        </InView>
       </div>
     </section>
   );
