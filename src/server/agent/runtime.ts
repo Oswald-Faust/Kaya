@@ -9,7 +9,7 @@ import { DomainError, isDomainError } from "@/server/domain/errors";
 import { assetKindFor } from "@/server/domain/content/draft";
 import { allocateBudget } from "@/server/domain/strategy/allocation";
 import type { AgentPlan } from "@/server/domain/types";
-import { currentChannelScores, ensureRateExperimentVariants, monthlyBudgetFor } from "@/server/services/experiments";
+import { currentChannelScores, ensureRateExperimentVariants, monthlyBudgetFor, transitionExperiment } from "@/server/services/experiments";
 import { getGovernance } from "@/server/services/policy-store";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { dictionaries } from "@/i18n/dictionaries";
@@ -148,7 +148,9 @@ async function call(ctx: ToolContext, rec: RunRecorder, tool: string, input: Rec
   const output = result.status === "succeeded" ? result.output : undefined;
   if (!parentStep) {
     await rec.finish(stepId, result.status === "succeeded" ? "done" : result.status === "awaiting_approval" ? "waiting" : "failed", {
-      detail: result.status === "failed" ? result.error : undefined,
+      detail: result.status === "failed" ? result.error : result.status === "succeeded" && result.cached ? "Reused the result of an earlier run" : undefined,
+      // A reused result belongs to an earlier run's tool call; keep it on this step so this run still shows it.
+      output: result.status === "succeeded" && result.cached ? { ...result.output, reusedToolCallId: result.toolCallId } : undefined,
     });
   }
   return { ...result, output, stepId } as InvokeResult & { output?: Outputs; stepId: string };
@@ -313,6 +315,11 @@ async function executeExperiment(args: { ctx: ToolContext; rec: RunRecorder; loc
 
   const lead = prefix + draftLine;
 
+  // Decide up front what proves this experiment is live and how it will be measured.
+  const measure = await call(ctx, rec, "experiments.measurement_plan", { experimentId: exp.id }, "Plan how it's proven live and measured");
+  const plan = measure.output as { launchedBy?: string; trackedLink?: string | null; founderSteps?: string[]; evaluation?: string } | undefined;
+  const handOff = () => founderHandOff({ ctx, rec, c, exp, key, assetId, lead, plan });
+
   if (kind === "landing_page" && assetId) {
     const stepId = await rec.step("tool", `Publish the page for ${key}`);
     const path = `/${exp.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "page"}`;
@@ -342,14 +349,53 @@ async function executeExperiment(args: { ctx: ToolContext; rec: RunRecorder; loc
       ctx,
       { reason: exp.rationale, stepId, experimentId: exp.id },
     );
-    if (result.status === "failed") return { message: lead + t(e.noIntegration, { key, reason: result.error }), awaitingApproval: false };
+    if (result.status === "failed") {
+      // No connected X/LinkedIn account: the founder can still post it by hand.
+      await rec.finish(stepId, "skipped", { detail: result.error });
+      return handOff();
+    }
     return finishAction(rec, stepId, result, { waiting: lead + t(e.postWaiting, { key }), done: lead + t(e.postDone, { key }) }, c);
   }
 
   if (kind === "email") return { message: lead + t(e.emailReady, { key }), awaitingApproval: false };
 
+  if (plan?.launchedBy === "founder" || kind === "social_post") return handOff();
+
   await rec.step("observation", `${key} needs founder time rather than an automated launch`, { status: "done" });
   return { message: lead + t(e.manual, { key }), awaitingApproval: false };
+}
+
+/**
+ * Experiments only a person can launch (Show HN, Reddit, a creator deal) go to
+ * the founder's approvals with the draft, the tracked link and the steps.
+ * The experiment moves to Approval; approving with the post URL verifies it and starts measuring.
+ */
+async function founderHandOff(args: {
+  ctx: ToolContext;
+  rec: RunRecorder;
+  c: Copy;
+  exp: ExperimentRow;
+  key: string;
+  assetId: string | null;
+  lead: string;
+  plan?: { trackedLink?: string | null; founderSteps?: string[]; evaluation?: string };
+}): Promise<HandlerResult> {
+  const { ctx, rec, c, exp, key, assetId, lead, plan } = args;
+  const e = c.execute;
+  const steps = (plan?.founderSteps ?? []).map((step, i) => `${i + 1}. ${step}`).join(" ");
+  const reason = plan?.trackedLink ? t(e.handoffReason, { steps, link: plan.trackedLink }) : t(e.handoffReasonNoLink, { steps });
+  const stepId = await rec.step("tool", `Hand ${key} to you to launch`);
+  const result = await invokeTool(
+    "experiments.founder_launch",
+    { experimentId: exp.id, ...(assetId ? { assetId } : {}), ...(plan?.trackedLink ? { trackedLink: plan.trackedLink } : {}) },
+    ctx,
+    { reason, stepId, experimentId: exp.id },
+  );
+  if (result.status === "awaiting_approval") {
+    const current = await db.query.experiments.findFirst({ where: and(eq(experiments.id, exp.id), eq(experiments.workspaceId, ctx.workspaceId)) });
+    if (current?.status === "proposed") await transitionExperiment(db, ctx.workspaceId, current, "awaiting_approval", ctx.actor);
+  }
+  return finishAction(rec, stepId, result, { waiting: lead + t(e.handoffWaiting, { key, evaluation: plan?.evaluation ?? "" }), done: lead + t(e.postDone, { key }) }, c);
 }
 
 /** Runs the one experiment the founder picked, instead of letting the agent choose. */
@@ -385,6 +431,7 @@ export async function startExperimentRun(input: Omit<StartRunInput, "goal"> & { 
       steps: [
         { id: "read", title: c.execute.planRead, why: c.execute.planReadWhy, tool: "memory.read_business_context", risk: "R0" },
         { id: "draft", title: c.execute.planDraft, why: c.execute.planDraftWhy, tool: "content.draft_asset", risk: "R1" },
+        { id: "measure", title: c.execute.planMeasure, why: c.execute.planMeasureWhy, tool: "experiments.measurement_plan", risk: "R0" },
         { id: "execute", title: c.execute.planExecute, why: c.execute.planExecuteWhy, risk: "R2" },
       ],
     };
