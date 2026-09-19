@@ -60,6 +60,7 @@ export default async function ExperimentsPage({ params, searchParams }: PageProp
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="exps-header"
         title={x.title}
         description={x.description}
         actions={all.length > 0 && !ctx.isGuest && (ctx.role === "owner" || ctx.role === "admin") ? <ResetExperimentsButton slug={ctx.workspaceSlug} name={ctx.workspaceName} /> : undefined}
@@ -70,7 +71,7 @@ export default async function ExperimentsPage({ params, searchParams }: PageProp
         }
       />
 
-      <nav aria-label={x.viewsLabel} className="flex gap-1 border-b border-line">
+      <nav data-tour="exps-views" aria-label={x.viewsLabel} className="flex gap-1 border-b border-line">
         {VIEWS.map((v) => (
           <Link
             key={v.id}
@@ -84,7 +85,7 @@ export default async function ExperimentsPage({ params, searchParams }: PageProp
         ))}
       </nav>
 
-      <Panel className="overflow-hidden">
+      <Panel tour="exps-table" className="overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState
             title={view.id === "running" ? x.emptyRunning : view.id === "completed" ? x.emptyCompleted : view.id === "archived" ? x.emptyArchived : view.id === "suppressed" ? x.emptySuppressed : x.emptyQueue}

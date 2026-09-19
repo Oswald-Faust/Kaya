@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 import { ApprovalCard } from "@/components/product/approval-card";
 import { EvaluationSignal } from "@/components/product/experiment-bits";
+import { PublishedUrlCard } from "@/components/product/published-url-card";
 import { formatMetricValue, metricLabel, thresholdLabel } from "@/components/product/experiment-format";
 import { RecordResultButton } from "@/components/product/run-result-button";
 import { Badge, ChannelBadge, ConfidenceBadge, StatusBadge } from "@/components/ui/badge";
@@ -16,10 +17,11 @@ import { Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { experimentKey, formatDate, formatDelta, formatNumber, formatPct, formatUsd } from "@/lib/format";
 import { requireWorkspace } from "@/server/context";
-import { currentChannelFit, evaluateRow, getExperimentDetail, rankQueue } from "@/server/services/experiments";
+import { currentChannelFit, evaluateRow, getExperimentDetail, getExperimentReadiness, rankQueue } from "@/server/services/experiments";
 import { buildExperimentBrief } from "@/server/domain/experiments/brief";
 import { channelLabel } from "@/server/domain/channels";
 import { latestMetricDay } from "@/server/services/metrics";
+import { connectionViews, connectSpecs } from "@/server/integrations/view";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -33,9 +35,7 @@ const STAGE_INDEX: Record<string, number> = { idea: 0, proposed: 0, suppressed: 
 export default async function ExperimentDetailPage({ params }: PageProps<"/w/[workspace]/experiments/[number]">) {
   const { workspace, number } = await params;
   const ctx = await requireWorkspace(workspace);
-  const n = Number(number);
-  if (!Number.isInteger(n)) notFound();
-  const detail = await getExperimentDetail(ctx.workspaceId, n);
+  const detail = await getExperimentDetail(ctx.workspaceId, Number(number));
   if (!detail) notFound();
   const { experiment: e, variants, assets, campaigns, learning, approvals } = detail;
   const base = `/w/${ctx.workspaceSlug}`;
@@ -52,10 +52,14 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
   const stage = STAGE_INDEX[e.status] ?? 0;
   const pending = approvals.filter((a) => a.status === "pending");
 
-  const [channelFit, asOf] = await Promise.all([
+  const [channelFit, asOf, readiness, connections] = await Promise.all([
     currentChannelFit(ctx.workspaceId, e.productId, e.channel),
     latestMetricDay(ctx.workspaceId, e.productId),
+    getExperimentReadiness(ctx.workspaceId, e),
+    connectionViews(ctx.workspaceId),
   ]);
+  const specs = connectSpecs();
+  const canManage = ctx.role === "owner" || ctx.role === "admin";
   const brief = buildExperimentBrief({
     experiment: { ...e, rationale: translateDomainText(e.rationale, locale) },
     // Channel Fit sentences are composed in English on the server; translate before composing.
@@ -90,7 +94,7 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
             </div>
             <h1 className="mt-1.5 text-2xl font-semibold tracking-tight">{e.name}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div data-tour="xd-actions" className="flex items-center gap-2">
             {live && (ctx.isDemo ? <RecordResultButton slug={ctx.workspaceSlug} experimentId={e.id} mode="simulate" label={dict.app.command.simulate} /> : <RecordResultButton slug={ctx.workspaceSlug} experimentId={e.id} mode="evaluate" label={x.evaluateNow} />)}
             {(e.status === "proposed" || e.status === "awaiting_approval") && (
               <RunActionButton slug={ctx.workspaceSlug} experimentId={e.id} label={x.askLaunch} />
@@ -99,7 +103,7 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
         </div>
       </div>
 
-      <ol aria-label={x.lifecycle} className="flex overflow-x-auto rounded-lg border border-line bg-surface">
+      <ol data-tour="xd-lifecycle" aria-label={x.lifecycle} className="flex overflow-x-auto rounded-lg border border-line bg-surface">
         {LIFECYCLE.map((s, i) => {
           const done = i < stage || (i === stage && e.status === "completed");
           const current = i === stage && e.status !== "completed";
@@ -118,9 +122,15 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
         </Notice>
       )}
 
+      {readiness.requiresUrl && !readiness.publishedUrl && (e.status === "running" || e.status === "evaluating") && (
+        <Notice tone="warning" title={x.unverifiedPageTitle}>
+          {x.unverifiedPageBody}
+        </Notice>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
-          <Panel className="p-5">
+          <Panel tour="xd-hypothesis" className="p-5">
             <p className="text-xs font-medium text-subtle">{x.hypothesis}</p>
             <p className="mt-1.5 text-xl leading-snug font-medium text-ink">{e.hypothesis}.</p>
             <dl className="mt-4 grid gap-x-6 gap-y-2 border-t border-line pt-3 text-sm sm:grid-cols-2">
@@ -137,7 +147,7 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
             </dl>
           </Panel>
 
-          <Panel>
+          <Panel tour="xd-brief">
             <PanelHeader title={dict.app.brief.title} description={dict.app.brief.hint} />
             <div className="divide-y divide-line border-t border-line">
               {brief.map((section) => (
@@ -156,7 +166,7 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
             </div>
           </Panel>
 
-          <Panel>
+          <Panel tour="xd-result">
             <PanelHeader title={e.status === "completed" ? x.result : live ? x.liveResult : x.criteria} />
             <div className="grid gap-px border-t border-line bg-line sm:grid-cols-4">
               <Stat label={x.primaryMetric} value={metricLabel(e.primaryMetric, dict)} />
@@ -256,17 +266,50 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
             <ApprovalCard
               key={a.id}
               slug={ctx.workspaceSlug}
-              approval={{ id: a.id, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: key, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
+              approval={{ id: a.id, tool: a.tool, title: a.title, change: a.change, reason: a.reason, risk: a.risk, experimentKey: key, policyDecision: a.policyDecision, createdAt: a.createdAt.toISOString() }}
             />
           ))}
 
-          <Panel>
+          {readiness.requiresUrl && (
+            <PublishedUrlCard
+              slug={ctx.workspaceSlug}
+              experimentId={e.id}
+              experimentStatus={e.status}
+              initialUrl={readiness.publishedUrl}
+              hasAnalytics={readiness.hasAnalytics}
+              connectedProviders={readiness.connectedProviders}
+              canManage={canManage}
+              isDemo={ctx.isDemo}
+              connections={connections}
+              specs={specs}
+              returnTo={`/w/${ctx.workspaceSlug}/experiments/${e.number}`}
+              proofLabel={readiness.proofLabel}
+              proofExample={readiness.proofExample}
+              evaluation={readiness.evaluation}
+              signalDays={readiness.signalDays}
+              trackedLink={readiness.trackedLink}
+            />
+          )}
+
+          <Panel tour="xd-design">
             <PanelHeader title={x.design} />
             <dl className="divide-y divide-line border-t border-line text-sm">
               <Row k={x.audience}>{e.audience}</Row>
               <Row k={dict.app.common.channel}>
                 <ChannelBadge channel={e.channel} />
               </Row>
+              {e.publishedUrl && (
+                <Row k="URL">
+                  <a
+                    href={e.publishedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate font-mono text-xs text-agent underline hover:text-agent-hover block"
+                  >
+                    {e.publishedUrl}
+                  </a>
+                </Row>
+              )}
               <Row k={x.budget}>{e.budget > 0 ? `${usd(e.budget)}${e.dailySpendCap ? fmt(x.dailyCap, { amount: usd(e.dailySpendCap) }) : ""}` : dict.app.common.organic}</Row>
               <Row k={x.spent}>{e.spend > 0 ? usd(e.spend) : "—"}</Row>
               <Row k={x.duration}>{fmt(x.durationValue, { days: e.durationDays, signal: e.timeToSignalDays })}</Row>
@@ -276,7 +319,7 @@ export default async function ExperimentDetailPage({ params }: PageProps<"/w/[wo
           </Panel>
 
           {ranked && (
-            <Panel>
+            <Panel tour="xd-ranked">
               <PanelHeader title={x.whyRanked} description={ranked.suppressedBy ? x.suppressedByMemory : fmt(dict.app.metrics.priority, { score: ranked.score })} />
               <ul className="divide-y divide-line border-t border-line text-sm">
                 {ranked.factors.map((f) => (
