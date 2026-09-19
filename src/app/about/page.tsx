@@ -10,6 +10,7 @@ import { AboutNumbers } from "@/components/about/about-numbers";
 import { AboutCulture } from "@/components/about/about-culture";
 import { AboutCareers } from "@/components/about/about-careers";
 import { getI18n } from "@/i18n/server";
+import { getMarketingLinks } from "@/server/marketing";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -17,11 +18,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: a.metaTitle, description: a.metaDescription, openGraph: { title: a.ogTitle, description: a.ogDescription } };
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const links = await getMarketingLinks();
   return (
     <div className="min-h-screen bg-surface text-ink font-sans antialiased selection:bg-lime-soft selection:text-lime-deep">
       {/* Global Marketing Navigation with Mega-menu */}
-      <SiteNav />
+      <SiteNav appHref={links.appHref} demoHref={links.demoHref} />
 
       {/* Main Content Sections */}
       <main id="main-content">

@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { ControlSpot, DecideSpot, ExperimentSpot, LearnSpot, UnderstandSpot } from "@/components/brand/clay";
 import { getI18n } from "@/i18n/server";
+import { getMarketingLinks } from "@/server/marketing";
 import { cn } from "@/lib/cn";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,11 +51,11 @@ const SPOTS = [
 ] as const;
 
 export default async function BrandPage() {
-  const { t } = await getI18n();
+  const [{ t }, links] = await Promise.all([getI18n(), getMarketingLinks()]);
   const b = t.brand;
   return (
     <div className="min-h-screen bg-surface text-ink">
-      <SiteNav />
+      <SiteNav appHref={links.appHref} demoHref={links.demoHref} />
 
       <main className="mx-auto max-w-[1200px] px-5 pb-24">
         <section className="grid gap-10 py-20 lg:grid-cols-[1.2fr_1fr] lg:items-end">
