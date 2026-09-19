@@ -31,8 +31,8 @@ export default async function ContentPage({ params }: PageProps<"/w/[workspace]/
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
-      <PageHeader title={ct.title} description={ct.description} />
-      <Panel className="overflow-hidden">
+      <PageHeader tour="content-header" title={ct.title} description={ct.description} />
+      <Panel tour="content-list" className="overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState title={ct.emptyTitle} description={ct.emptyHint} />
         ) : (

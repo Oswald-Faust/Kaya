@@ -36,11 +36,12 @@ export default async function CampaignsPage({ params }: PageProps<"/w/[workspace
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="camp-header"
         title={ct.title}
         description={ct.description}
         meta={<span className="text-xs text-muted tabular">{fmt(ct.activeDaily, { amount: formatUsd(activeDaily, undefined, locale) })}</span>}
       />
-      <Panel className="overflow-hidden">
+      <Panel tour="camp-table" className="overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState title={ct.emptyTitle} description={ct.emptyHint} />
         ) : (
