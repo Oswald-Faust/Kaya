@@ -70,7 +70,7 @@ export const TONE_CARD: Record<Tone, string> = {
 };
 
 /** `$demo` resolves to the demo workspace when one exists. */
-export type NavItem = { id: NavItemId; href: string; icon: LucideIcon; tone: Tone; soon?: boolean };
+export type NavItem = { id: NavItemId; href: string; icon: LucideIcon; tone: Tone; soon?: boolean; isNew?: boolean; kai?: boolean };
 export type NavMenu = {
   id: NavMenuId;
   columns: { id: NavColumnId; items: NavItem[] }[];
@@ -100,6 +100,7 @@ export const NAV: NavMenu[] = [
       {
         id: "act",
         items: [
+          { id: "kai", href: "/kai", icon: MessagesSquare, tone: "blue", isNew: true, kai: true },
           { id: "kayaAgent", href: "/#control", icon: Sparkles, tone: "lilac" },
           { id: "paidAds", href: "/#uc-ads", icon: Megaphone, tone: "pink" },
           { id: "seoPages", href: "/#uc-seo", icon: FileText, tone: "lilac" },

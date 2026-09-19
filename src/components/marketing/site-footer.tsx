@@ -44,7 +44,22 @@ export function SiteFooter({ demoHref = "/demo" }: { demoHref?: string }) {
           <WordRise text="kaya" />
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 text-sm text-muted">
-          <p>© {new Date().getFullYear()} Kaya</p>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
+            <p>© {new Date().getFullYear()} Kaya</p>
+            <span className="text-line-strong">·</span>
+            <Link href="/legal" className="transition-colors hover:text-ink">
+              {c.legalNotice}
+            </Link>
+            <Link href="/privacy" className="transition-colors hover:text-ink">
+              {c.privacy}
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-ink">
+              {c.terms}
+            </Link>
+            <Link href="/dpa" className="transition-colors hover:text-ink">
+              {c.dpa}
+            </Link>
+          </div>
           <div className="flex flex-wrap items-center gap-5">
             <Link href="/pricing" className="hover:text-ink">
               {c.pricing}

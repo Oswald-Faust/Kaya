@@ -5,12 +5,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import { KayaWordmark } from "@/components/brand/logo";
+import { KaiMark } from "@/components/brand/kai-mark";
 import { ControlSpot, DecideSpot, ExperimentSpot, LearnSpot, UnderstandSpot } from "@/components/brand/clay";
 import { NAV, TONE_CARD, TONE_TILE, resolveHref, type NavItem, type NavMenu } from "./nav-data";
 import { EASE } from "./motion";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/i18n/client";
 import { LanguageSwitcher } from "./language-switcher";
+import { clearStoredNavAuth, getStoredNavAuth, setStoredNavAuth, subscribeToNavAuth } from "@/lib/nav-auth";
 
 const SPOTS = { understand: UnderstandSpot, decide: DecideSpot, experiment: ExperimentSpot, control: ControlSpot, learn: LearnSpot };
 const COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
@@ -31,13 +33,65 @@ function SmartLink({ href, className, onClick, children }: { href: string; class
   );
 }
 
-export function SiteNav({ appHref = null, demoHref = "/demo" }: { appHref?: string | null; demoHref?: string }) {
+export function SiteNav({ appHref: initialAppHref = null, demoHref: initialDemoHref = "/demo" }: { appHref?: string | null; demoHref?: string }) {
   const { t } = useI18n();
   const c = t.marketing.chrome;
   const nav = t.marketing.nav;
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const closeTimer = useRef<number | null>(null);
+
+  const [appHref, setAppHref] = useState<string | null>(initialAppHref);
+  const [demoHref, setDemoHref] = useState<string>(initialDemoHref);
+
+  useEffect(() => {
+    // 1. If server passed a concrete appHref, keep local storage in sync
+    if (initialAppHref) {
+      setAppHref(initialAppHref);
+      setStoredNavAuth({ appHref: initialAppHref, demoHref: initialDemoHref, authenticated: true });
+    } else {
+      // If server didn't provide it, check if we have an active session cached in localStorage
+      const cached = getStoredNavAuth();
+      if (cached?.authenticated && cached.appHref) {
+        setAppHref(cached.appHref);
+        if (cached.demoHref) setDemoHref(cached.demoHref);
+      }
+    }
+
+    // 2. Validate/refresh against the API in the background
+    let isCancelled = false;
+    fetch("/api/marketing/links", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isCancelled || !data) return;
+        if (data.authenticated && data.appHref) {
+          setAppHref(data.appHref);
+          if (data.demoHref) setDemoHref(data.demoHref);
+          setStoredNavAuth({ appHref: data.appHref, demoHref: data.demoHref, authenticated: true, subscription: data.subscription });
+        } else {
+          setAppHref(null);
+          clearStoredNavAuth();
+        }
+      })
+      .catch(() => {
+        // Network error / offline, keep current state
+      });
+
+    // 3. Listen to cross-tab updates (BroadcastChannel, storage event, tab visibility)
+    const unsubscribe = subscribeToNavAuth((state) => {
+      if (state.authenticated && state.appHref) {
+        setAppHref(state.appHref);
+        if (state.demoHref) setDemoHref(state.demoHref);
+      } else {
+        setAppHref(null);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
+  }, [initialAppHref, initialDemoHref]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -219,12 +273,17 @@ function MenuItem({ item, demoHref, onNavigate }: { item: NavItem; demoHref: str
   const copy: { label: string; desc?: string } = t.marketing.nav.items[item.id];
   const inner = (
     <>
-      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl transition-transform group-hover/item:scale-105", TONE_TILE[item.tone])}>
-        <item.icon className="size-[18px]" />
-      </span>
+      {item.kai ? (
+        <KaiMark className="size-9 transition-transform group-hover/item:scale-105" />
+      ) : (
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl transition-transform group-hover/item:scale-105", TONE_TILE[item.tone])}>
+          <item.icon className="size-[18px]" />
+        </span>
+      )}
       <span className="min-w-0">
         <span className="flex items-center gap-2 text-[15px] text-ink">
           {copy.label}
+          {item.isNew && <span className="rounded-full bg-lime px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-ink uppercase">{t.marketing.chrome.new}</span>}
           {item.soon && <span className="rounded-full bg-sunken px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-subtle uppercase">{t.marketing.chrome.soon}</span>}
         </span>
         {copy.desc && <span className="block text-[13px] leading-snug text-muted">{copy.desc}</span>}
