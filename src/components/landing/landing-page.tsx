@@ -10,6 +10,7 @@ import { AutonomyDial } from "@/components/landing/autonomy-dial";
 import { LogoMarquee } from "@/components/landing/logo-marquee";
 import { Faq } from "@/components/landing/faq";
 import { KaiSection } from "@/components/landing/kai-section";
+import { ClayBulb, ClayMagnifier, ClayRocket, ClayTarget } from "@/components/brand/clay-objects";
 import { KaiMark } from "@/components/brand/kai-mark";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -105,10 +106,10 @@ export async function LandingPage({ hero, links, overlapStack = false }: { hero:
           <InView amount={0.25}>
             <Stagger className="mt-8 grid grid-cols-2 md:grid-cols-4" stagger={0.12}>
               {l.loop.map(({ label, text }, i) => {
-                const Spot = [UnderstandSpot, DecideSpot, ExperimentSpot, LearnSpot][i];
+                const Spot = [ClayMagnifier, ClayTarget, ClayRocket, ClayBulb][i];
                 return (
                 <StaggerItem key={label} className="flex flex-col items-center px-4 pb-10 text-center">
-                  <Spot className="w-full max-w-[280px]" />
+                  <Spot className="w-full max-w-[240px] py-4" />
                   <p className="-mt-2 text-lg font-medium tracking-[-0.02em]">
                     <span className="mr-1.5 font-mono text-xs text-subtle">0{i + 1}</span>
                     {label}
