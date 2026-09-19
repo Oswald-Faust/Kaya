@@ -19,6 +19,7 @@ import {
   syncSuppression,
   transitionExperiment,
 } from "@/server/services/experiments";
+import { measurementContext, verifyLaunchProof } from "@/server/services/measurement";
 import { daysLeftInMonth, getBlendedRows, getChannelRows, latestMetricDay, monthSpendToDate, shiftDay } from "@/server/services/metrics";
 import { experimentKey } from "@/lib/format";
 import { stableId } from "@/lib/ids";
@@ -202,9 +203,53 @@ const evaluateExperimentTool = defineTool({
   describe: () => ({ title: "Evaluated experiment results" }),
   async run(input, ctx) {
     const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+    const m = await measurementContext(ctx.workspaceId, exp);
+    // Never judge an experiment that isn't proven live or can't be measured: say what's missing instead.
+    if (m.readiness.missing.length > 0) {
+      return {
+        output: { key: experimentKey(exp.number), ready: false, missing: m.readiness.missing, howItIsMeasured: m.plan.evaluation, signalDays: m.plan.signalDays },
+        targetType: "experiment",
+        targetId: exp.id,
+      };
+    }
     const variants = await db.select().from(experimentVariants).where(eq(experimentVariants.experimentId, exp.id));
     const evaluation = evaluateRow(exp, variants, ctx.now);
-    return { output: { key: experimentKey(exp.number), ...evaluation }, targetType: "experiment", targetId: exp.id };
+    return { output: { key: experimentKey(exp.number), ready: true, howItIsMeasured: m.plan.evaluation, proof: m.proofUrl, ...evaluation }, targetType: "experiment", targetId: exp.id };
+  },
+});
+
+const measurementPlanTool = defineTool({
+  name: "experiments.measurement_plan",
+  title: "Plan how an experiment is launched and measured",
+  description:
+    "Returns, for one experiment, what proves it is live (a page URL, a Hacker News item, a campaign), which connected tool measures it, the tracked link to share, how the result is computed and what is still missing. Read this before launching or evaluating.",
+  capability: "READ_EXPERIMENTS",
+  risk: "R0",
+  external: false,
+  supportsDryRun: true,
+  permissions: ALL_ROLES,
+  input: z.object({ experimentId: z.string() }),
+  idempotencyKey: (i) => i.experimentId,
+  describe: () => ({ title: "Planned how the experiment is measured" }),
+  async run(input, ctx) {
+    const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+    const m = await measurementContext(ctx.workspaceId, exp);
+    return {
+      output: {
+        key: experimentKey(exp.number),
+        deliverable: m.plan.deliverable,
+        launchedBy: m.plan.launch,
+        proof: m.plan.proof,
+        trackedLink: m.trackedLink,
+        measuredWith: m.plan.requires,
+        evaluation: m.plan.evaluation,
+        signalDays: m.plan.signalDays,
+        founderSteps: m.plan.founderSteps,
+        readiness: m.readiness,
+      },
+      targetType: "experiment",
+      targetId: exp.id,
+    };
   },
 });
 
@@ -278,6 +323,12 @@ const completeExperiment = defineTool({
   idempotencyKey: (i) => i.experimentId,
   describe: () => ({ title: "Recorded the experiment result and learning" }),
   async run(input, ctx) {
+    if (!ctx.isDemo) {
+      const m = await measurementContext(ctx.workspaceId, await getExperimentById(ctx.workspaceId, input.experimentId));
+      if (m.readiness.missing.length) {
+        throw new DomainError("validation", `Can't record a result yet: ${m.readiness.missing.map((x) => `${x.label} (${x.action})`).join("; ")}.`);
+      }
+    }
     const result = await evaluateAndComplete(ctx.workspaceId, input.experimentId, ctx.actor, { force: input.force });
     return {
       output: {
@@ -369,6 +420,27 @@ const draftContent = defineTool({
   },
 });
 
+const verifyLaunch = defineTool({
+  name: "experiments.verify_launch",
+  title: "Verify an experiment is live",
+  description:
+    "Checks the proof URL against the experiment's plan (right site, e.g. news.ycombinator.com for Show HN, or the product's domain for a page), confirms it answers, saves it and can start the experiment. Measurement only begins once this passes.",
+  capability: "UPDATE_EXPERIMENT",
+  risk: "R1",
+  external: false,
+  supportsDryRun: false,
+  permissions: ALL_ROLES,
+  input: z.object({ experimentId: z.string(), url: z.string().url().max(2000), launch: z.boolean().default(true) }),
+  idempotencyKey: (i) => `${i.experimentId}:${i.url}`,
+  describe: (i) => ({ title: "Verified the experiment is live", change: i.url }),
+  async run(input, ctx) {
+    const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+    const result = await verifyLaunchProof(ctx.workspaceId, exp, input.url, ctx.actor, { launch: input.launch });
+    if (!result.ok) throw new DomainError("validation", result.error ?? "The URL couldn't be verified.");
+    return { output: { key: experimentKey(exp.number), url: result.url, httpStatus: result.status, status: result.experiment?.status }, targetType: "experiment", targetId: exp.id };
+  },
+});
+
 /* ─────────────────────────── Publish (R2) ─────────────────────────── */
 
 const publishPage = defineTool({
@@ -388,6 +460,10 @@ const publishPage = defineTool({
     const result = await adapter.execute("PUBLISH_LANDING_PAGE", input, opts);
     if (!opts.dryRun && input.experimentId) {
       const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+      const product = await db.query.products.findFirst({ where: eq(products.id, ctx.productId) });
+      const baseUrl = product?.url?.replace(/\/$/, "") ?? "";
+      const fullUrl = baseUrl ? `${baseUrl}${input.path}` : input.path;
+      await db.update(experiments).set({ publishedUrl: exp.publishedUrl ?? fullUrl }).where(eq(experiments.id, exp.id));
       if (exp.status === "awaiting_approval" || exp.status === "proposed") {
         const e = exp.status === "proposed" ? { ...exp } : exp;
         if (exp.status === "proposed") await transitionExperiment(db, ctx.workspaceId, e, "awaiting_approval", ctx.actor);
@@ -433,6 +509,43 @@ const sendEmail = defineTool({
     const { adapter } = await requireAdapter(ctx, "SEND_EMAIL");
     const result = await adapter.execute("SEND_EMAIL", input, opts);
     return { output: result.data, adapter: adapter.provider, isDemo: adapter.mode === "demo", targetType: "email", targetId: result.externalId };
+  },
+});
+
+const founderLaunch = defineTool({
+  name: "experiments.founder_launch",
+  title: "Hand the launch to the founder",
+  description:
+    "For experiments only a person can launch (Show HN, Reddit, a creator deal): puts the draft, the tracked link and the steps in the founder's approvals. Approving means “I posted it”; with the post URL, Kaya verifies it and starts measuring.",
+  capability: "LAUNCH_EXPERIMENT",
+  risk: "R2",
+  external: false,
+  supportsDryRun: true,
+  permissions: MANAGERS,
+  input: z.object({ experimentId: z.string(), assetId: z.string().optional(), trackedLink: z.string().optional(), url: z.string().url().max(2000).optional() }),
+  idempotencyKey: (i) => `founder_launch:${i.experimentId}`,
+  describe: () => ({ title: "Post it yourself, then confirm", change: "Draft ready → you publish → Kaya verifies and measures" }),
+  async policy(input, ctx) {
+    const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+    return { channel: exp.channel, requiresHuman: true };
+  },
+  async run(input, ctx, opts) {
+    const exp = await getExperimentById(ctx.workspaceId, input.experimentId);
+    if (opts.dryRun) return { output: { dryRun: true, key: experimentKey(exp.number) } };
+    if (input.url) {
+      const result = await verifyLaunchProof(ctx.workspaceId, exp, input.url, ctx.actor, { launch: true });
+      if (!result.ok) throw new DomainError("validation", result.error ?? "The post URL couldn't be verified.");
+      return { output: { key: experimentKey(exp.number), url: result.url, verified: true, status: "running" }, targetType: "experiment", targetId: exp.id };
+    }
+    // Confirmed without a URL: the experiment starts, and the page asks for the proof so measurement can begin.
+    if (exp.status === "proposed" || exp.status === "awaiting_approval") {
+      if (exp.status === "proposed") await transitionExperiment(db, ctx.workspaceId, exp, "awaiting_approval", ctx.actor);
+      await transitionExperiment(db, ctx.workspaceId, { ...exp, status: "awaiting_approval" }, "running", ctx.actor, { startedAt: ctx.now });
+    }
+    if (input.assetId) {
+      await db.update(creativeAssets).set({ status: "published" }).where(and(eq(creativeAssets.id, input.assetId), eq(creativeAssets.workspaceId, ctx.workspaceId)));
+    }
+    return { output: { key: experimentKey(exp.number), verified: false, status: "running", next: "Paste the post URL on the experiment page so Kaya can verify it and start measuring." }, targetType: "experiment", targetId: exp.id };
   },
 });
 
@@ -575,11 +688,14 @@ export const TOOLS = [
   readLive,
   rankExperimentQueue,
   evaluateExperimentTool,
+  measurementPlanTool,
+  verifyLaunch,
   proposeExperiment,
   completeExperiment,
   draftContent,
   publishPage,
   publishSocialPost,
+  founderLaunch,
   sendEmail,
   updateDailyBudget,
   pauseCampaign,
