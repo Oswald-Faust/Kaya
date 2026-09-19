@@ -140,10 +140,18 @@ const FR: Record<string, string> = {
   "Your trial has already been used. Choose a paid plan to continue.": "Votre essai a déjà été utilisé. Choisissez un plan payant pour continuer.",
   "Only an owner or admin can choose the plan.": "Seul un propriétaire ou un admin peut choisir le plan.",
   "Only owners and admins can manage integrations.": "Seuls les propriétaires et les admins peuvent gérer les intégrations.",
+  "The URL must begin with http:// or https://": "L'URL doit commencer par http:// ou https://",
+  "Invalid URL format.": "Format d'URL invalide.",
+  "Request timed out: the page is taking too long to respond.": "Délai d'attente dépassé (timeout) : la page met trop de temps à répondre.",
+  "Unable to reach the server. Please check the domain or your network connection.": "Impossible de joindre le serveur. Vérifiez le domaine ou votre connexion internet.",
+  "URL validation failed.": "Validation de l'URL échouée.",
+  "URL validated (200 OK) and experiment launched successfully!": "URL validée (200 OK) et expérience lancée avec succès !",
+  "URL validated successfully (200 OK).": "URL validée avec succès (200 OK).",
 };
 
 const FR_PATTERNS: [RegExp, string][] = [
   [/^(.+) is connected\. Kaya pulled a first snapshot of your data\.$/, "$1 est connecté. Kaya a récupéré un premier aperçu de vos données."],
+  [/^The page responded with HTTP status (\d+)\.$/, "La page a répondu avec le statut HTTP $1."],
 ];
 
 export function translateServerText(text: string, locale: Locale): string;
