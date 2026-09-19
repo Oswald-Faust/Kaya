@@ -18,6 +18,7 @@ import {
 import { SOLUTIONS, getSolutionBySlug, type SolutionItem } from "@/data/solutions-data";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/cn";
+import { OBJECT_BY_SLUG } from "@/components/brand/clay-objects";
 import { TONE_CARD, TONE_TILE } from "./nav-data";
 
 const SPOT_COMPONENTS = {
@@ -48,7 +49,7 @@ export function SolutionLayout({ slug, solution: initialSolution, appHref, demoH
   const solution = initialSolution ?? (slug ? getSolutionBySlug(slug) : undefined);
   if (!solution) return null;
 
-  const SpotIcon = SPOT_COMPONENTS[solution.spot];
+  const SpotIcon = OBJECT_BY_SLUG[solution.slug] ?? SPOT_COMPONENTS[solution.spot];
 
   // All solutions in the same category for the pill nav
   const categoryPills: NavPill[] = SOLUTIONS.filter(

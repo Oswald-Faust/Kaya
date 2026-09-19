@@ -18,6 +18,7 @@ import {
 import { USE_CASES, getUseCaseBySlug, type UseCaseItem } from "@/data/use-cases-data";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/cn";
+import { OBJECT_BY_SLUG } from "@/components/brand/clay-objects";
 import { TONE_CARD, TONE_TILE } from "./nav-data";
 
 const SPOT_COMPONENTS = {
@@ -42,7 +43,7 @@ export function UseCaseLayout({ slug, useCase: initialUseCase, appHref, demoHref
   const useCase = initialUseCase ?? (slug ? getUseCaseBySlug(slug) : undefined);
   if (!useCase) return null;
 
-  const SpotIcon = SPOT_COMPONENTS[useCase.spot];
+  const SpotIcon = OBJECT_BY_SLUG[useCase.slug] ?? SPOT_COMPONENTS[useCase.spot];
 
   // All use case pills for seamless tab switching
   const pills: NavPill[] = USE_CASES.map((uc) => ({
