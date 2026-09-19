@@ -30,7 +30,7 @@ export default async function WorkspaceSettingsPage({ params }: PageProps<"/w/[w
     <>
       <SettingsHeader title={g.title} description={g.description} />
 
-      <SettingsSection>
+      <SettingsSection tour="set-general">
         <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-ink">{ctx.workspaceName}</p>
@@ -52,7 +52,7 @@ export default async function WorkspaceSettingsPage({ params }: PageProps<"/w/[w
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection title={g.danger} className="mt-10">
+      <SettingsSection tour="set-danger" title={g.danger} className="mt-10">
         <SettingsRow label={g.delete} description={g.deleteHint} className="[&>div:first-child>div:first-child]:text-negative">
           <DeleteWorkspace slug={ctx.workspaceSlug} name={ctx.workspaceName} blockedReason={blockedReason} />
         </SettingsRow>

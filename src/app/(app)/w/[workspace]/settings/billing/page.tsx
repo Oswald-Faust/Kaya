@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, sum } from "drizzle-orm";
 import { ArrowUpRight, Check, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Meter, SettingsHeader, SettingsRow, SettingsSection } from "@/component
 import { PLANS, priceFor } from "@/components/pricing/plans";
 import { requireWorkspace } from "@/server/context";
 import { db } from "@/server/db/client";
-import { experiments, organizations, products, workspaces } from "@/server/db/schema";
+import { campaigns, experiments, organizations, products, toolCalls, workspaces } from "@/server/db/schema";
 import { canManageTeam } from "@/server/domain/team/seats";
 import { getTeam } from "@/server/services/team";
 import { formatDate, formatNumber, formatUsd } from "@/lib/format";
@@ -26,11 +26,23 @@ export default async function BillingSettingsPage({ params }: PageProps<"/w/[wor
   const { workspace } = await params;
   const ctx = await requireWorkspace(workspace);
   const orgWorkspaces = db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, ctx.organizationId));
-  const [{ plan, seats }, org, [{ productCount }], [{ running }], { t, locale }] = await Promise.all([
+  const [
+    { plan, seats },
+    org,
+    [{ productCount }],
+    [{ running }],
+    [{ actionCount }],
+    [{ expSpend }],
+    [{ campSpend }],
+    { t, locale },
+  ] = await Promise.all([
     getTeam(ctx),
     db.query.organizations.findFirst({ where: eq(organizations.id, ctx.organizationId) }),
     db.select({ productCount: count() }).from(products).where(inArray(products.workspaceId, orgWorkspaces)),
     db.select({ running: count() }).from(experiments).where(and(eq(experiments.workspaceId, ctx.workspaceId), eq(experiments.status, "running"))),
+    db.select({ actionCount: count() }).from(toolCalls).where(and(inArray(toolCalls.workspaceId, orgWorkspaces), eq(toolCalls.status, "succeeded"))),
+    db.select({ expSpend: sum(experiments.spend) }).from(experiments).where(inArray(experiments.workspaceId, orgWorkspaces)),
+    db.select({ campSpend: sum(campaigns.spend) }).from(campaigns).where(inArray(campaigns.workspaceId, orgWorkspaces)),
     getI18n(),
   ]);
   const b = t.settings.billing;
@@ -40,10 +52,45 @@ export default async function BillingSettingsPage({ params }: PageProps<"/w/[wor
   const annual = org?.planInterval === "year";
   const manager = canManageTeam(ctx.role) && !ctx.isDemo;
 
+  const totalSpend = Math.max(Number(expSpend ?? 0), Number(campSpend ?? 0));
+  const actionsQuota = org?.planActions ?? tier?.actions ?? def?.tiers?.[0]?.actions ?? null;
+  const spendLimit = def?.spendCap ?? null;
+
   const usage = [
-    { label: b.seats, value: seats.used, max: seats.limit, href: `/w/${ctx.workspaceSlug}/settings/team` },
-    { label: b.products, value: productCount, max: def?.maxProducts ?? null },
-    { label: b.running, value: running, max: def?.maxExperiments ?? null },
+    {
+      label: b.seats,
+      value: seats.used,
+      max: seats.limit,
+      display: `${seats.used} / ${seats.limit === null ? "∞" : seats.limit}`,
+      href: `/w/${ctx.workspaceSlug}/settings/team`,
+    },
+    {
+      label: b.products,
+      value: productCount,
+      max: def?.maxProducts ?? null,
+      display: `${productCount} / ${def?.maxProducts ?? "∞"}`,
+    },
+    {
+      label: b.running,
+      value: running,
+      max: def?.maxExperiments ?? null,
+      display: `${running} / ${def?.maxExperiments ?? "∞"}`,
+      href: `/w/${ctx.workspaceSlug}/experiments`,
+    },
+    {
+      label: b.agentActions,
+      value: actionCount,
+      max: actionsQuota,
+      display: `${formatNumber(actionCount, locale)} / ${actionsQuota === null ? "∞" : formatNumber(actionsQuota, locale)}`,
+      href: `/w/${ctx.workspaceSlug}/agent`,
+    },
+    {
+      label: b.agentSpend,
+      value: totalSpend,
+      max: spendLimit,
+      display: `${formatUsd(totalSpend, { cents: false }, locale)} / ${spendLimit === null ? "∞" : formatUsd(spendLimit, { cents: false }, locale)}`,
+      href: `/w/${ctx.workspaceSlug}/analytics`,
+    },
   ];
 
   const manageButton = plan.billingManaged ? (
@@ -97,7 +144,7 @@ export default async function BillingSettingsPage({ params }: PageProps<"/w/[wor
       <SettingsSection title={b.usage}>
         {usage.map((u) => (
           <SettingsRow
-            key={u.label}
+            key={String(u.label)}
             label={
               u.href ? (
                 <Link href={u.href} className="hover:underline">
@@ -111,8 +158,8 @@ export default async function BillingSettingsPage({ params }: PageProps<"/w/[wor
           >
             <div className="flex items-center gap-3">
               <Meter value={u.value} max={u.max} className="flex-1" />
-              <span className="w-24 shrink-0 text-right text-xs text-muted tabular">
-                {u.value} / {u.max === null ? "∞" : u.max}
+              <span className="w-32 shrink-0 text-right text-xs text-muted tabular">
+                {u.display}
               </span>
             </div>
           </SettingsRow>
