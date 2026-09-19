@@ -21,6 +21,13 @@ const budgetIncrease = (current: number, proposed: number) => ({
 });
 
 describe("governance policy", () => {
+  it("always sends founder hand-offs to a human, even in autopilot and observe", () => {
+    const handoff = { tool: "experiments.founder_launch", capability: "LAUNCH_EXPERIMENT", risk: "R2" as const, requiresHuman: true };
+    for (const mode of ["observe", "suggest", "copilot", "autopilot"] as const) {
+      expect(evaluatePolicy(handoff, mode, policy).outcome).toBe("require_approval");
+    }
+  });
+
   it("allows read-only actions in observe mode", () => {
     expect(evaluatePolicy({ tool: "metrics.query", capability: "READ_REVENUE", risk: "R0" }, "observe", policy).outcome).toBe(
       "allow",

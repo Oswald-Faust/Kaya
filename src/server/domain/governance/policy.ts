@@ -31,6 +31,8 @@ export interface ActionRequest {
   daysLeftInMonth?: number;
   /** A reduction of risk exposure (pause, decrease) is always permitted. */
   reducesExposure?: boolean;
+  /** Only a person can do this (post on Hacker News, sign a creator): never automatic, in any mode. */
+  requiresHuman?: boolean;
 }
 
 export const RISK_LABEL: Record<RiskClass, string> = {
@@ -104,6 +106,10 @@ export function evaluatePolicy(
   const modeAllowsAutomatic = automaticByMode(action, mode, policy);
   add("Autonomy mode", modeAllowsAutomatic.allowed, modeAllowsAutomatic.detail, false);
 
+  if (action.requiresHuman) {
+    add("Founder action", false, "Only you can do this step; Kaya prepared everything it needs", false);
+  }
+
   if (policy.neverWithoutApproval.includes(action.capability)) {
     add("Always requires approval", false, `${action.capability} always needs a human decision`, false);
   }
@@ -111,7 +117,8 @@ export function evaluatePolicy(
   const hardFailures = checks.filter((c) => c.hard && !c.passed);
   const softFailures = checks.filter((c) => !c.hard && !c.passed);
 
-  const blockedByMode = mode === "observe" && action.risk !== "R0";
+  // A founder hand-off isn't the agent acting, so Observe mode still lets it reach the founder.
+  const blockedByMode = mode === "observe" && action.risk !== "R0" && !action.requiresHuman;
 
   let outcome: PolicyDecision["outcome"];
   if (hardFailures.length > 0 || blockedByMode) outcome = "block";
