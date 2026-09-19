@@ -44,6 +44,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/w/[worksp
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
       <PageHeader
+        tour="int-header"
         title={it.title}
         description={it.description}
       />
@@ -55,7 +56,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/w/[worksp
       )}
 
       {connected.length > 0 && (
-        <Panel className="overflow-hidden">
+        <Panel tour="int-connected" className="overflow-hidden">
           <PanelHeader title={it.connected} count={connected.length} />
           <div className="overflow-x-auto border-t border-line">
             <table className="w-full min-w-[820px] text-sm">

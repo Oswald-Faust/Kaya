@@ -28,7 +28,7 @@ export function IntegrationsCatalog({
   const { t } = useI18n();
   const byProvider = new Map(connections.map((c) => [c.provider, c]));
   return (
-    <div className="space-y-6">
+    <div data-tour="int-catalog" className="space-y-6">
       <Suspense>
         <ConnectNotice />
       </Suspense>
