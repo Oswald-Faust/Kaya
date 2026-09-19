@@ -31,9 +31,9 @@ export async function ModulePreview({
   const mt = (await getI18n()).t.app.module;
   return (
     <div className="mx-auto max-w-[1100px] space-y-5 px-3 py-5 sm:px-5 lg:py-6">
-      <PageHeader title={title} description={description} />
+      <PageHeader tour="module-header" title={title} description={description} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Panel>
+        <Panel tour="module-experiments">
           <PanelHeader title={mt.onChannel} count={experiments.length} description={mt.onChannelHint} />
           {experiments.length === 0 ? (
             <p className="border-t border-line px-4 py-4 text-sm text-muted">{mt.noneOnChannel}</p>
@@ -52,7 +52,7 @@ export async function ModulePreview({
             </ul>
           )}
         </Panel>
-        <Panel className="p-4">
+        <Panel tour="module-roadmap" className="p-4">
           <p className="text-2xs font-medium text-subtle">{mt.status}</p>
           <p className="mt-1 text-sm font-medium text-ink">{status}</p>
           <p className="mt-3 text-2xs font-medium text-subtle">{mt.planned}</p>
